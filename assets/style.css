@@ -70,7 +70,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .phases{margin:3rem 0 0}
 .phases h2{font-size:1.6rem}
 .phases p{color:var(--muted);margin:.4rem 0 1.2rem;max-width:62ch}
-.bar{display:grid;grid-template-columns:repeat(16,1fr);gap:3px}
+.bar{display:grid;grid-template-columns:repeat(18,1fr);gap:3px}
 .bar a{height:44px;border-radius:6px;display:grid;place-items:center;text-decoration:none;font:600 .85rem var(--mono);color:#fff;transition:transform .12s}
 .bar a:hover{transform:scaleY(1.18);color:#fff}
 .bar a.p1{background:#2A3AA6}.bar a.p2{background:#0A7566}.bar a.p3{background:#A35F00}.bar a.p4{background:#7A3FA0}.bar a.p5{background:#B23A5C}

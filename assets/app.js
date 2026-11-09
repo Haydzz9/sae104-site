@@ -164,8 +164,8 @@
     [1, 3, "HTML, the web and modern JavaScript", "p1"],
     [4, 8, "Node, Express and MongoDB", "p2"],
     [9, 9, "Midterm", "p3"],
-    [10, 13, "React and your API", "p4"],
-    [14, 16, "Security, testing, deploy, demos", "p5"],
+    [10, 15, "PostgreSQL, React and your API", "p4"],
+    [16, 18, "Security, testing, deploy, demos", "p5"],
   ];
   function home() {
     const lec = C.lecture, lab = C.laboratory;
@@ -178,15 +178,15 @@
         <p>${KINDS[k].blurb}</p>
         <div class="res"><b>200 OK</b><br>${body}</div>
         <span class="go">Open the ${KINDS[k].label.toLowerCase()}</span></a>`;
-    const bar = Array.from({ length: 16 }, (_, i) => {
+    const bar = Array.from({ length: lec.length }, (_, i) => {
       const w = i + 1, p = PHASES.find((x) => w >= x[0] && w <= x[1]);
       return `<a class="${p[3]}" href="week.html?t=lecture&w=${w}" title="Week ${w}: ${esc(lec[i].title)}">${w}</a>`;
     }).join("");
     const legend = PHASES.map((p) => `<span style="--c:var(--${p[3]})">${p[0] === p[1] ? "Week " + p[0] : "Weeks " + p[0] + " to " + p[1]}: ${p[2]}</span>`).join("");
     return `<main id="main" class="wrap">
       <section class="intro">
-        <h1>Web programming with the MERN stack</h1>
-        <p>Sixteen weeks from “what happens when I type a URL?” to a deployed full-stack app. Each week has a lecture to read and a laboratory to build.</p>
+        <h1>Web programming: from MERN to PERN</h1>
+        <p>Eighteen weeks from “what happens when I type a URL?” to a deployed full-stack app. Each week has a lecture to read and a laboratory to build.</p>
         ${last ? `<a class="resume" href="week.html?t=${last.t}&w=${last.w}">Continue: ${KINDS[last.t].label}, week ${last.w}, ${esc(last.title)}</a>` : ""}
         <div class="doors">
           ${door("lecture", "lec", `${lec.length} weeks, ${lec[0].duration} each<br>${nq} quick-check questions`)}
@@ -194,7 +194,7 @@
         </div>
       </section>
       <section class="phases" style="--p1:#2A3AA6;--p2:#0A7566;--p3:#A35F00;--p4:#7A3FA0;--p5:#B23A5C">
-        <h2>The 16-week route</h2>
+        <h2>The ${lec.length}-week route</h2>
         <p>Pick any week to open its lecture. Colours show how the course is organised.</p>
         <div class="bar">${bar}</div>
         <div class="legend">${legend}</div>
@@ -232,11 +232,11 @@
 
   /* ---------- week page ---------- */
   const TAGS = { concept: "Concept", example: "Worked example", outcomes: "Learning outcomes", brief: "Lab brief", prepare: "Prepare", examday: "Exam day", catchup: "Catch-up", checklist: "Checklist", step: "Step", orient: "Orientation", challenge: "Finished early?" };
-  const LANGS = { javascript: "JavaScript", xml: "HTML", css: "CSS", bash: "Terminal", json: "JSON", http: "HTTP", text: "Output" };
+  const LANGS = { javascript: "JavaScript", xml: "HTML", css: "CSS", bash: "Terminal", json: "JSON", http: "HTTP", sql: "SQL", text: "Output" };
 
   function codeHTML(b) {
     let h;
-    try { h = b.lang !== "text" ? hljs.highlight(b.t, { language: b.lang }).value : esc(b.t); } catch (e) { h = esc(b.t); }
+    try { h = b.lang !== "text" && hljs.getLanguage(b.lang) ? hljs.highlight(b.t, { language: b.lang }).value : esc(b.t); } catch (e) { h = esc(b.t); }
     return `<div class="cb"><div class="cb-h"><span>${LANGS[b.lang] || "Code"}</span><button type="button" data-copy>Copy</button></div><pre tabindex="0"><code class="hljs">${h}</code></pre></div>`;
   }
   function blockHTML(b, s, t, w) {
@@ -349,12 +349,12 @@
         <h1>${esc(w.title)}</h1>
         <p class="focus">${esc(w.focus)}</p>
         <div class="actions">
-          <span class="pill">Week ${n} of 16</span><span class="pill">${esc(w.duration)}</span>
-          <a class="btn solid" href="${w.pptx}" download>Download original slides (.pptx)</a>
+          <span class="pill">Week ${n} of ${weeks.length}</span><span class="pill">${esc(w.duration)}</span>
+          ${w.pptx ? `<a class="btn solid" href="${w.pptx}" download>Download original slides (.pptx)</a>` : ""}
           <a class="btn" href="week.html?t=${K.other}&w=${n}">Open the ${O.label.toLowerCase()} for this week</a>
           <div class="wprog"><div class="meter" id="wmeter" style="--p:${p.pct}%"><i></i></div><span id="wpct">${p.pct}%</span></div>
         </div>
-        ${w.pptxNote ? `<p class="pnote">${esc(w.pptxNote)}</p>` : ""}</div></div>
+        ${w.pptxNote ? `<p class="pnote">${esc(w.pptxNote)}</p>` : !w.pptx ? `<p class="pnote">There is no slide deck for this week yet.</p>` : ""}</div></div>
       <div class="wrap layout">
         <nav class="toc" aria-label="On this page"><details id="tocd" open><summary>On this page</summary><ol>${toc}</ol></details></nav>
         <main id="main" class="content">

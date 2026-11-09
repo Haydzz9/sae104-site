@@ -1,7 +1,7 @@
 # CSAE 104 Web Programming: course site
 
-Interactive lecture and laboratory pages for CSAE 104 (MERN stack), built from the 16-week slide decks.
-Lecture and laboratory are separate sections. Every week also links to the original `.pptx` file.
+Interactive lecture and laboratory pages for CSAE 104 (MERN to PERN), built from the 18-week syllabus and the slide decks.
+Lecture and laboratory are separate sections. Every week links to its original `.pptx` file, except Weeks 10 and 11 (PostgreSQL), which have no deck yet.
 
 ## Publish on GitHub Pages
 1. Create a repository and upload everything in this folder (keep the folder structure).
