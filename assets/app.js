@@ -161,10 +161,10 @@
 
   /* ---------- home ---------- */
   const PHASES = [
-    [1, 3, "HTML, the web and modern JavaScript", "p1"],
-    [4, 8, "Node, Express and MongoDB", "p2"],
+    [1, 3, "HTML and CSS foundation", "p1"],
+    [4, 8, "The web, JavaScript, Node, Express and MongoDB (MERN)", "p2"],
     [9, 9, "Midterm", "p3"],
-    [10, 15, "PostgreSQL, React and your API", "p4"],
+    [10, 15, "PostgreSQL (PERN), React and your API", "p4"],
     [16, 18, "Security, testing, deploy, demos", "p5"],
   ];
   function home() {
@@ -186,7 +186,7 @@
     return `<main id="main" class="wrap">
       <section class="intro">
         <h1>Web programming: from MERN to PERN</h1>
-        <p>Eighteen weeks from “what happens when I type a URL?” to a deployed full-stack app. Each week has a lecture to read and a laboratory to build.</p>
+        <p>Eighteen weeks from your first HTML page to a deployed full-stack app. Each week has a lecture to read and a laboratory to build.</p>
         ${last ? `<a class="resume" href="week.html?t=${last.t}&w=${last.w}">Continue: ${KINDS[last.t].label}, week ${last.w}, ${esc(last.title)}</a>` : ""}
         <div class="doors">
           ${door("lecture", "lec", `${lec.length} weeks, ${lec[0].duration} each<br>${nq} quick-check questions`)}
@@ -350,7 +350,7 @@
         <p class="focus">${esc(w.focus)}</p>
         <div class="actions">
           <span class="pill">Week ${n} of ${weeks.length}</span><span class="pill">${esc(w.duration)}</span>
-          ${w.pptx ? `<a class="btn solid" href="${w.pptx}" download>Download original slides (.pptx)</a>` : ""}
+          ${w.decks ? w.decks.map((d) => `<a class="btn solid" href="${d.path}" download>${esc(d.label)} (.pptx)</a>`).join("") : w.pptx ? `<a class="btn solid" href="${w.pptx}" download>Download original slides (.pptx)</a>` : ""}
           <a class="btn" href="week.html?t=${K.other}&w=${n}">Open the ${O.label.toLowerCase()} for this week</a>
           <div class="wprog"><div class="meter" id="wmeter" style="--p:${p.pct}%"><i></i></div><span id="wpct">${p.pct}%</span></div>
         </div>
