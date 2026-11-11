@@ -1,9 +1,7 @@
 # CSAE 104 Web Programming: course site
 
 Interactive lecture and laboratory pages for CSAE 104 (MERN to PERN), built from the 18-week syllabus and the slide decks.
-Lecture and laboratory are separate sections. Weeks 1 to 3 (HTML and CSS) and Weeks 10 and 11 (PostgreSQL) have no deck of their own yet.
-Weeks 1 to 8 follow the revised syllabus (HTML, CSS and layout in Weeks 1 to 3; the web and JavaScript in Week 4; async JavaScript, Node and Git in Week 5; Express and REST in Week 6; validation and MongoDB in Week 7).
-The decks for those weeks are the earlier ones and are linked as "Earlier deck" on the week pages, so they follow the old week order.
+Lecture and laboratory are separate sections. Every week links to a `.pptx` deck. Weeks 1 to 11 were rebuilt from the site content to follow the revised syllabus (the Week 12 and 13 lecture decks only had their week references corrected).
 Every week page also has a "Where this fits in the syllabus" panel taken from Part III of the syllabus.
 
 ## Publish on GitHub Pages
