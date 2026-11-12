@@ -162,9 +162,9 @@
   /* ---------- home ---------- */
   const PHASES = [
     [1, 3, "HTML and CSS foundation", "p1"],
-    [4, 8, "The web, JavaScript, Node, Express and MongoDB (MERN)", "p2"],
+    [4, 8, "The web, JavaScript, Node, Express and MongoDB Atlas (MERN)", "p2"],
     [9, 9, "Midterm", "p3"],
-    [10, 15, "PostgreSQL (PERN), React and your API", "p4"],
+    [10, 15, "Supabase PostgreSQL (PERN), React and your API", "p4"],
     [16, 18, "Security, testing, deploy, demos", "p5"],
   ];
   function home() {
