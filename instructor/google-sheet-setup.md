@@ -7,7 +7,7 @@ Students must tick the consent box on the **My progress** page and enter their n
 1. Create a new Google Sheet, for example "CSAE 104 Progress".
 2. Choose **Extensions > Apps Script**.
 3. Delete the sample code, paste in everything from `instructor/Code.gs`, and change `SECRET` to a word of your own.
-4. Choose **Run > setup** (pick `setup` in the function list). Allow the permissions when Google asks. This creates the `Progress` and `Settings` sheets.
+4. Choose **Run > setup** (pick `setup` in the function list). Allow the permissions when Google asks. This creates the `Progress` and `Settings` sheets. If the "Weeks behind" column ever shows `#REF!`, the Settings sheet is missing: run `setup` again.
 
 ## 2. Publish it
 1. Click **Deploy > New deployment**, choose the type **Web app**.

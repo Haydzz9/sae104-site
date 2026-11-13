@@ -62,8 +62,20 @@ function behindFormula_(r) {
   return "=SUMPRODUCT((COLUMN(" + l1 + r + ":" + l2 + r + ")-COLUMN(" + l1 + r + ")+1<=Settings!$B$1)*(((" + l1 + r + ":" + l2 + r + "<Settings!$B$2)+(" + b1 + r + ":" + b2 + r + "<Settings!$B$2))>0))";
 }
 
+function settings_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let st = ss.getSheetByName(SETTINGS);
+  if (!st) {
+    st = ss.insertSheet(SETTINGS);
+    st.getRange("A1:C2").setValues([["Current week", 1, "Change this each week"], ["Behind if below %", 80, "Lecture or lab under this counts as behind"]]);
+    st.getRange("A1:A2").setFontWeight("bold"); st.setColumnWidth(1, 160); st.setColumnWidth(3, 320);
+  }
+  return st;
+}
+
 function sheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  settings_();
   let sh = ss.getSheetByName(DATA);
   if (!sh) { sh = ss.insertSheet(DATA); setupHeaders_(sh); }
   return sh;
@@ -78,13 +90,13 @@ function setupHeaders_(sh) {
   sh.setFrozenRows(1); sh.setFrozenColumns(3);
   sh.hideColumns(1); sh.hideColumns(COL.raw);
   sh.getRange("E:F").setNumberFormat("yyyy-mm-dd hh:mm");
+  sh.setColumnWidth(2, 220); sh.setColumnWidths(5, 2, 140);
 }
 
 /** Run this once from the editor (Run > setup) to create the sheets and colouring. */
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let st = ss.getSheetByName(SETTINGS);
-  if (!st) { st = ss.insertSheet(SETTINGS); st.getRange("A1:C2").setValues([["Current week", 1, "Change this each week"], ["Behind if below %", 80, "Lecture or lab under this counts as behind"]]); st.getRange("A1:A2").setFontWeight("bold"); }
+  settings_();
   let sh = ss.getSheetByName(DATA);
   if (!sh) { sh = ss.insertSheet(DATA); setupHeaders_(sh); }
   const red = SpreadsheetApp.newConditionalFormatRule().whenNumberLessThan(80).setBackground("#FADAD7").setRanges([sh.getRange(2, 7, 500, 2), sh.getRange(2, COL.lec, 500, 2 * WEEKS)]).build();
