@@ -1,5 +1,6 @@
 # Live progress in a Google Sheet (about 10 minutes)
-n> The complete instructor guide is in [docs/INSTRUCTOR-GUIDE.md](../docs/INSTRUCTOR-GUIDE.md). This page is the short technical setup.
+
+> The complete instructor guide is in [docs/INSTRUCTOR-GUIDE.md](../docs/INSTRUCTOR-GUIDE.md). This page is the short technical setup.
 
 The site sends each student's progress to a Google Sheet that you own. One row per student, updated as they work.
 Students must tick the consent box on the **My progress** page and enter their name and section first.
