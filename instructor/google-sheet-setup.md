@@ -63,3 +63,6 @@ They then open **My progress > Submit my work**, choose the lab or checkpoint, a
 - Grading: open the repo, check the commit history (dates and regular commits), open the tag for the checkpoint, and run or read the code. Compare "First submitted" with your deadline for late work.
 
 After changing the script, always use **Deploy > Manage deployments > Edit > New version > Deploy**.
+
+## Students who change device
+Progress is saved in each browser. A student who gets a new phone or computer can use **My progress > Use another device**: download a backup on the old device, then **Restore from backup** on the new one. The backup carries their device ID, so the sheet recognises the new device without you unlocking anything. If a student lost the old device with no backup, clear their **Device ID** cell in the Progress sheet; their progress restarts on the new device from zero, and their next sync claims the row again.

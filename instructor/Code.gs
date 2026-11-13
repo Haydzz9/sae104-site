@@ -93,7 +93,7 @@ function handleSubmission_(p) {
   return out_({ ok: true });
 }
 
-function normId_(s) { return String(s || "").toLowerCase().replace(/s+/g, ""); }
+function normId_(s) { return String(s || "").toLowerCase().replace(/\s+/g, ""); }
 
 // Works out who a request is from. The student ID is required and is the unique key.
 // With a Roster: IDs listed there must match; names listed without IDs are matched by name.

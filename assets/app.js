@@ -558,6 +558,58 @@
     });
   }
 
+  /* ---------- move progress to another device ---------- */
+  const BACKUP_KEY = /^(prog:|quiz:|note:)/;
+  const BACKUP_ONE = new Set(["student", "cid", "locked", "consent", "subs", "synced", "active"]);
+  function makeBackup() {
+    const data = {};
+    try { Object.keys(localStorage).filter((k) => k.startsWith("csae104:")).forEach((k) => { const n = k.slice(8); if (BACKUP_KEY.test(n) || BACKUP_ONE.has(n)) data[n] = JSON.parse(localStorage.getItem(k)); }); } catch (e) {}
+    return { app: "csae104-backup", version: 1, createdAt: new Date().toISOString(), data };
+  }
+  // merge a backup into this device: never lose progress that is already here
+  function restoreBackup(b) {
+    if (!b || b.app !== "csae104-backup" || !b.data || typeof b.data !== "object") throw new Error("not a backup");
+    let n = 0;
+    for (const [k, v] of Object.entries(b.data)) {
+      if (!(BACKUP_KEY.test(k) || BACKUP_ONE.has(k))) continue;
+      if (k.startsWith("prog:") && v && Array.isArray(v.seen) && Array.isArray(v.done)) {
+        const cur = store.get(k, { seen: [], done: [] });
+        store.set(k, { seen: [...new Set([...cur.seen, ...v.seen.map(String)])], done: [...new Set([...cur.done, ...v.done.map(String)])] }); n++;
+      } else if (k.startsWith("quiz:") && v && Number.isFinite(v.best) && Number.isFinite(v.total)) {
+        const cur = store.get(k, null); if (!cur || v.best > cur.best) store.set(k, { best: v.best, total: v.total }); n++;
+      } else if (k.startsWith("note:") && typeof v === "string") { if (!store.get(k, "")) store.set(k, v); n++; }
+      else if (k === "subs" && v && typeof v === "object") store.set(k, Object.assign({}, v, store.get("subs", {})));
+      else if (k === "student" && v && typeof v === "object") store.set(k, { name: String(v.name || ""), section: String(v.section || ""), id: String(v.id || "") });
+      else if (["cid", "synced", "active"].includes(k) && typeof v === "string") store.set(k, v);
+      else if (["locked", "consent"].includes(k)) store.set(k, !!v);
+    }
+    return n;
+  }
+  function deviceCard() {
+    return `<section class="card" id="device"><h2>Use another device</h2>
+      <p class="small">Your progress is saved on this device. To continue on a phone or another computer, download a backup here, then open this page on the other device and choose <b>Restore from backup</b>. Restoring adds to what is already there. It never removes progress.</p>
+      <div class="pactions"><button class="btn" type="button" id="bkDl">Download backup</button>
+      <label class="btn fbtn">Restore from backup<input id="bkUp" type="file" accept=".json,application/json" hidden></label></div>
+      <p class="small" id="bkMsg" role="status"></p></section>`;
+  }
+  function wireDevice() {
+    const m = $("#bkMsg"); if (!m) return;
+    $("#bkDl").addEventListener("click", () => {
+      const s = getStudent(); download(`csae104-backup-${slugName(s.name)}-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(makeBackup(), null, 2), "application/json");
+      m.style.color = ""; m.textContent = "Backup downloaded. Keep it private: it holds your progress and your identity for this course.";
+    });
+    $("#bkUp").addEventListener("change", async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      try {
+        const b = JSON.parse(await f.text());
+        if (!confirm("Restore this backup on this device? Your progress here is kept and the backup is added to it.")) { e.target.value = ""; return; }
+        const n = restoreBackup(b);
+        m.style.color = ""; m.textContent = `Restored ${n} saved items. Reloading...`; setTimeout(() => location.reload(), 700);
+      } catch (err) { m.style.color = "var(--bad)"; m.textContent = "That file is not a CSAE 104 backup."; }
+      e.target.value = "";
+    });
+  }
+
   function progressPage() {
     const s = getStudent(), snap = snapshot(), lk = syncOn() && store.get("locked", false);
     const rows = snap.weeks.map((x) => {
@@ -582,6 +634,7 @@
       </div>
       <div class="net"><div class="net-head prow"><span>Week</span><span>Lecture</span><span>Laboratory</span><span>Quiz</span></div>${rows}</div>
       ${submitCard()}
+      ${deviceCard()}
       <div class="pactions">
         <button class="btn solid" type="button" id="dlJson">Download my progress file</button>
         <button class="btn" type="button" id="dlCsv">Download as CSV</button>
@@ -603,6 +656,7 @@
     $("#dlJson").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.json`, JSON.stringify(d, null, 2), "application/json"); });
     $("#dlCsv").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.csv`, csv([d]), "text/csv"); });
     wireSubmit();
+    wireDevice();
     if (syncOn()) {
       const st = () => { const t = store.get("synced", null), on = store.get("consent", false), er = store.get("syncerr", null); $("#syncState").textContent = !on ? "Sharing is off." : er ? SYNC_MSG[er] : t ? "Last sent: " + new Date(t).toLocaleString() : "Sharing is on. Your progress is sent automatically while you study."; };
       st();
