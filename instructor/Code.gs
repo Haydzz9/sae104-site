@@ -93,6 +93,14 @@ function setupHeaders_(sh) {
   sh.setColumnWidth(2, 220); sh.setColumnWidths(5, 2, 140);
 }
 
+/** Rewrites the Weeks behind formula in every row. Run it if you ever see #REF! in that column. */
+function repairFormulas() {
+  settings_();
+  const sh = sheet_(), last = sh.getLastRow();
+  for (let r = 2; r <= last; r++) sh.getRange(r, 10).setFormula(behindFormula_(r));
+  SpreadsheetApp.flush();
+}
+
 /** Run this once from the editor (Run > setup) to create the sheets and colouring. */
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -102,4 +110,5 @@ function setup() {
   const red = SpreadsheetApp.newConditionalFormatRule().whenNumberLessThan(80).setBackground("#FADAD7").setRanges([sh.getRange(2, 7, 500, 2), sh.getRange(2, COL.lec, 500, 2 * WEEKS)]).build();
   const late = SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(0).setBackground("#FBEBCF").setBold(true).setRanges([sh.getRange(2, 10, 500, 1)]).build();
   sh.setConditionalFormatRules([red, late]);
+  repairFormulas();
 }
