@@ -84,7 +84,7 @@ Grade in the **Submissions** tab. Four columns at the right are yours to fill in
 | Column | What to enter |
 |---|---|
 | **Score** | The mark, for example 85 |
-| **Out of** | The maximum, for example 100 (optional) |
+| **Out of** | Filled in automatically from the **Grading** tab. Change a total there once, for every student. You can still type a different total on one row |
 | **Feedback** | A short comment for the student (optional) |
 | **Released** | Tick the checkbox when the student may see it |
 

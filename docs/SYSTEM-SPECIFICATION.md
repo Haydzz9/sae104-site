@@ -106,7 +106,7 @@ Out of scope: logins with passwords, grading by the system itself, checking the 
 | I, J | First submitted, last updated |
 | K | Times sent |
 | L | **Score** (instructor) |
-| M | **Out of** (instructor, optional) |
+| M | **Out of**. Filled in from the Grading tab by a formula; the instructor may type a different total for one row |
 | N | **Feedback** (instructor, optional) |
 | O | **Released** (checkbox, instructor) |
 
@@ -122,11 +122,15 @@ Columns **Name, Section, Student ID**, one student per row. Optional. See sectio
 | B2 | Behind if below (%) | 80 |
 | B3 | Inactive after (days) | 7 |
 
-### 6.5 Not registered (formulas)
+### 6.5 Grading (instructor)
+
+One row per gradable item: **Item** (the code, for example `lab1`, `cp1`, `final`), **Name**, and **Out of** (total points, default 100). Each submission's **Out of** is looked up from here (`VLOOKUP` on the Item code), so the total is set once per item.
+
+### 6.6 Not registered (formulas)
 
 Roster students with no row in Progress, plus counts of Roster size, Registered and Not registered. Students are matched by name.
 
-### 6.6 Inactive (formulas)
+### 6.7 Inactive (formulas)
 
 Registered students whose last sync is older than the Settings value, with the date and the days inactive.
 
@@ -185,6 +189,7 @@ Registered students whose last sync is older than the Settings value, with the d
 
 - The instructor enters **Score** (and optionally **Out of** and **Feedback**) and ticks **Released**.
 - A student sees an item only when it has a numeric score and **Released** is ticked.
+- Each item shows `score / out of` and a percentage when **Out of** is set. The page also shows a running **Total so far**, summed over the released items that have an **Out of**.
 - A student can read only their own scores, and only from the device that registered their ID.
 
 ### 7.9 Registration form

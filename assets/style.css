@@ -368,3 +368,4 @@ dialog.gate input:not([type=checkbox]),dialog.gate select{font:inherit;color:var
 .gsec pre{background:var(--code-bg);color:var(--code-ink);padding:.8rem 1rem;border-radius:10px;overflow-x:auto;margin:.4rem 0}
 .gsec pre code{background:none;color:inherit}
 .gtoc{margin:1rem 0;line-height:2}.gtoc a{white-space:nowrap}
+.sctotal{margin:.6rem 0;font-size:1.1rem}.sctotal small{color:var(--muted)}

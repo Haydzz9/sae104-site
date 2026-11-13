@@ -20,7 +20,7 @@ You need a Google account. Do these steps once per course.
 3. Delete the sample code. Open `instructor/Code.gs` from this project, copy everything, and paste it in.
 4. On line 6, change `SECRET` to a word of your own (for example `const SECRET = "my-secret-word";`).
 5. Click **Save** (the disk icon).
-6. In the function dropdown at the top, choose **setup**, then click **Run**. Allow the permissions Google asks for. This creates the tabs: Progress, Submissions, Roster, Settings, Not registered and Inactive.
+6. In the function dropdown at the top, choose **setup**, then click **Run**. Allow the permissions Google asks for. This creates the tabs: Progress, Submissions, Roster, Settings, Grading, Not registered and Inactive.
 
 **B. Publish it**
 1. Click **Deploy > New deployment**, choose type **Web app**.
@@ -44,7 +44,12 @@ You need a Google account. Do these steps once per course.
 2. Sections must be 3B, 3E, 3F or 3G. IDs must be the numbers students will type.
 3. Names are shown in the same form you type here, so use a consistent style, such as `Surname, Given name`.
 
-**E. Test it**
+**E. Set the total points for each lab**
+1. Open the **Grading** tab. It lists every graded item (Labs 1 to 17 except the midterm, the five project checkpoints and the final project).
+2. In the **Out of** column, type the total points for each item. They start at 100. For example, set Lab 1 to 20 and Checkpoint 1 to 50.
+3. Every submission picks up its total from this tab automatically, so you set each total once.
+
+**F. Test it**
 1. Open the site in a private window. The registration form should appear.
 2. Register as a Roster student, open any lecture week, and wait a few seconds. A row should appear in the **Progress** tab.
 3. Delete your test row afterwards if it was not a real student.
@@ -56,7 +61,7 @@ You need a Google account. Do these steps once per course.
 | Start of each week | Set **Current week** on the Settings tab. "Weeks behind" counts weeks up to this number |
 | Early in the week | Open **Not registered** and message students who are still missing |
 | Mid-week | Open **Inactive** (or look for red names in Progress) and follow up with students who have gone quiet |
-| After a lab or checkpoint is due | Open **Submissions**, check the repo links, and enter scores |
+| After a lab or checkpoint is due | Open **Submissions**, check the repo links, and enter each student's **Score** |
 | After grading | Tick **Released** so students can see their scores |
 
 ## 4. Reading each tab
@@ -80,17 +85,20 @@ You need a Google account. Do these steps once per course.
 
 **Settings:** Current week, Behind-if-below percentage, and Inactive-after days.
 
+**Grading:** the total points (**Out of**) for each graded item. Set once; submissions use it.
+
 ## 5. Grading submissions
 
 1. Open the **Submissions** tab and click a repo link.
 2. Check the commit history (regular commits, dates), open the tag if one is given, and read or run the code.
 3. In the same row, fill in:
-   - **Score**: for example 85
-   - **Out of**: for example 100 (optional)
+   - **Score**: the student's points, for example 17
+   - **Out of**: already filled in from the **Grading** tab. Leave it, or type a different total for this one submission
    - **Feedback**: a short comment (optional)
 4. When you are ready, tick **Released**. The student then sees it under **My progress > My scores**.
 
 Tips:
+- To change the total points for an item, edit it on the **Grading** tab. Rows that were filled in from it update by themselves. A total you typed by hand on a row stays as you typed it.
 - Grade first and release later, so no one sees a partial mark. To release a whole column at once, select the checkboxes and tick them together.
 - Changing a score later updates it for the student the next time they open the page or press **Refresh my scores**.
 - Quiz scores are shown to students automatically when they finish. The Submissions tab is for lab work and projects.

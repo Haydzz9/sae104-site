@@ -79,7 +79,7 @@ Notes:
 
 ## 6. See your scores
 
-When your instructor has checked your work and released the scores, they appear in **My progress > My scores**, with your score and any feedback. Press **Refresh my scores** to check for new ones. You see only your own scores.
+When your instructor has checked your work and released the scores, they appear in **My progress > My scores**, with your score and any feedback. Each item shows your score out of the total points, as a percentage. Under the table you also see your **total so far** across the graded work. Press **Refresh my scores** to check for new ones. You see only your own scores.
 
 ## 7. Use another device
 

@@ -33,7 +33,32 @@ function roster_() {
 }
 
 // ---------- work submissions (GitHub links) ----------
-const SUBS = "Submissions", NOTREG = "Not registered", INACTIVE = "Inactive";
+const SUBS = "Submissions", NOTREG = "Not registered", INACTIVE = "Inactive", GRADING = "Grading";
+
+// Total points for each graded item. Set them once on the Grading tab; every submission picks its "Out of" from here.
+const ITEMS = [
+  ["lab1", "Lab 1: HTML warm-up"], ["lab2", "Lab 2: Styling the Campus Notices page"], ["lab3", "Lab 3: Responsive Campus Notices Board"],
+  ["lab4", "Lab 4: HTTP inspection; JavaScript and the DOM"], ["lab5", "Lab 5: Fetching data; Node and npm"], ["lab6", "Lab 6: First Express server; in-memory CRUD API"],
+  ["lab7", "Lab 7: Validation; connect the API to a database"], ["lab8", "Lab 8: Persistent API; review"], ["lab10", "Lab 10: Notices database"],
+  ["lab11", "Lab 11: Your API on PostgreSQL"], ["lab12", "Lab 12: Static components"], ["lab13", "Lab 13: Notice form"],
+  ["lab14", "Lab 14: Fetch a list from your API"], ["lab15", "Lab 15: Connecting React to your API"], ["lab16", "Lab 16: Authentication and authorization"],
+  ["lab17", "Lab 17: Testing and deployment"], ["cp1", "Project Checkpoint 1 (Week 6): Notices API"], ["cp2", "Project Checkpoint 2 (Week 8): persistent API"],
+  ["cp3", "Project Checkpoint 3 (Week 11): API on PostgreSQL"], ["cp4", "Project Checkpoint 4 (Week 16): login"], ["cp5", "Project Checkpoint 5 (Week 17): deployed"],
+  ["final", "Final project: Campus Notices Board"],
+];
+function gradingSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(GRADING);
+  if (!sh) {
+    sh = ss.insertSheet(GRADING);
+    sh.getRange(1, 1, 1, 3).setValues([["Item", "Name", "Out of"]]).setFontWeight("bold").setBackground("#DAF1EC");
+    sh.getRange(2, 1, ITEMS.length, 3).setValues(ITEMS.map(function (i) { return [i[0], i[1], 100]; }));
+    sh.getRange("E1").setValue("Set the total points for each item in column C. Submissions use this as their Out of. You can still type a different Out of on a single submission.");
+    sh.setColumnWidth(2, 340); sh.setFrozenRows(1);
+  }
+  return sh;
+}
+function outOfFormula_(row) { return '=IFERROR(VLOOKUP($D' + row + ',Grading!$A$2:$C$60,3,FALSE),"")'; }
 function subsSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(SUBS);
@@ -114,6 +139,7 @@ function handleSubmission_(p) {
       row = last + 1;
       sh.getRange(row, 1, 1, 4).setValues([[key, safe_(String(who.name)), who.section, item]]);
       sh.getRange(row, 9).setValue(now); sh.getRange(row, 11).setValue(1);
+      gradingSheet_(); sh.getRange(row, 13).setFormula(outOfFormula_(row));
     } else sh.getRange(row, 11).setValue((Number(sh.getRange(row, 11).getValue()) || 1) + 1);
     sh.getRange(row, 5).setFormula(link_(repo));
     sh.getRange(row, 6).setValue(safe_(ref));
@@ -292,6 +318,8 @@ function setup() {
   }
   const subs = subsSheet_();
   subs.getRange("O2:O1000").insertCheckboxes();
+  gradingSheet_();
+  for (let r = 2; r <= subs.getLastRow(); r++) if (subs.getRange(r, 13).getValue() === "" && subs.getRange(r, 4).getValue() !== "") subs.getRange(r, 13).setFormula(outOfFormula_(r));
   let sh = ss.getSheetByName(DATA);
   if (!sh) { sh = ss.insertSheet(DATA); setupHeaders_(sh); }
   notRegisteredSheet_(); inactiveSheet_();
