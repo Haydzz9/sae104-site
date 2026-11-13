@@ -21,7 +21,7 @@ Tips:
 | **Labs** | Tick every step and every item on the "You are done when" checklist. The percentage is steps and checklist items you have ticked |
 | **Quizzes** | The "Check your understanding" questions. Your score is recorded when you answer all the multiple-choice questions |
 
-Your progress is saved on your device and sent to your instructor automatically a few seconds after you make progress, so you do not need to press anything.
+Your progress is saved on your device and sent to your instructor automatically a few seconds after you make progress, and again when you close the page or switch away from it. You do not need to press anything.
 
 Your **notes** and the answers you type in the written questions are saved on your device only. They are never sent.
 

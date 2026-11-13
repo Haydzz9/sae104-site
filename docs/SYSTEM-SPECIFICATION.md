@@ -167,7 +167,7 @@ Registered students whose last sync is older than the Settings value, with the d
 
 ### 7.5 Syncing
 
-- The browser sends a summary about 4 seconds after any change, when the site is opened, and when the tab is hidden.
+- The browser sends a summary about 4 seconds after any change and when the site is opened. Anything not yet sent is sent again when the page is closed, hidden or left (using `sendBeacon`, with `fetch` as a fallback).
 - A sync needs: sharing switched on (consent), a name, a section and a valid ID.
 - A failed sync keeps data in the browser. It sends again on a later change.
 

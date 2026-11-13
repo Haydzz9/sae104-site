@@ -485,7 +485,8 @@
   };
   function syncReady() { const s = getStudent(); return syncOn() && store.get("consent", false) && s.name && s.section && s.id; }
   let syncTimer = null;
-  function scheduleSync() { if (!syncReady() || store.get("syncerr", null)) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 4000); }
+  let dirty = false;
+  function scheduleSync() { if (!syncReady() || store.get("syncerr", null)) return; dirty = true; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 4000); }
   async function syncNow(force) {
     if (!syncReady()) return { ok: false };
     clearTimeout(syncTimer);
@@ -497,12 +498,23 @@
       try { await fetch(CFG.endpoint, Object.assign({}, opts, { mode: "no-cors" })); res = { ok: true, unconfirmed: true }; }
       catch (e2) { return { ok: false, error: "network" }; }
     }
-    if (res && res.ok) { store.set("synced", new Date().toISOString()); store.set("syncerr", null); store.set("locked", true); return { ok: true }; }
+    if (res && res.ok) { dirty = false; store.set("synced", new Date().toISOString()); store.set("syncerr", null); store.set("locked", true); return { ok: true }; }
     const err = (res && res.error) || "unknown";
     store.set("syncerr", SYNC_MSG[err] ? err : null);
     return { ok: false, error: err };
   }
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && syncTimer) syncNow(); });
+  // Send anything not yet sent when the student closes the tab, switches away or leaves the page.
+  function sendOnExit() {
+    if (!dirty || !syncReady() || store.get("syncerr", null)) return;
+    clearTimeout(syncTimer);
+    const body = JSON.stringify({ key: CFG.key || "", data: Object.assign(snapshot(), { clientId: deviceId() }) });
+    let queued = false;
+    try { if (navigator.sendBeacon) queued = navigator.sendBeacon(CFG.endpoint, new Blob([body], { type: "text/plain;charset=UTF-8" })); } catch (e) {}
+    if (!queued) { try { fetch(CFG.endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body, keepalive: body.length < 60000 }); queued = true; } catch (e) {} }
+    if (queued) { dirty = false; store.set("synced", new Date().toISOString()); }
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") sendOnExit(); });
+  addEventListener("pagehide", sendOnExit);
 
   /* ---------- registration gate: every student appears in the instructor's sheet ---------- */
   const ID_RE = /^[A-Za-z0-9][A-Za-z0-9 -]{2,29}$/;
@@ -702,7 +714,7 @@
       </form>
       ${syncOn() && store.get("locked", false) && noId ? `<p class="small lockmsg" style="color:var(--bad)">Your account was created before the student ID was required. Enter your student ID number above, then press <b>Send my progress now</b>.</p>` : ""}
       ${lk ? `<p class="small lockmsg">Your name, section and ID are locked because your progress is shared with your instructor. If something is wrong, ask your instructor to unlock it.</p>` : ""}
-      ${syncOn() ? `<div class="card consent"><label class="chk"><input type="checkbox" id="stConsent" ${store.get("consent", false) ? "checked" : ""}><span><b>Share my progress with my instructor.</b> My name, section, student ID (if given), percentages and quiz scores are sent to a Google Sheet that only my instructor reads. My notes are never sent. I can untick this any time.</span></label><p class="small" id="syncState"></p><button class="btn" type="button" id="syncNow">Send my progress now</button></div>` : ""}
+      ${syncOn() ? `<div class="card consent"><label class="chk"><input type="checkbox" id="stConsent" ${store.get("consent", false) ? "checked" : ""}><span><b>Share my progress with my instructor.</b> Your progress is sent automatically while you study and when you close the page. You do not need to press anything. My name, section, student ID (if given), percentages and quiz scores are sent to a Google Sheet that only my instructor reads. My notes are never sent. I can untick this any time.</span></label><p class="small" id="syncState"></p><button class="btn" type="button" id="syncNow">Send now (optional)</button></div>` : ""}
       <div class="sums">
         <div class="card"><b id="sumL">${avg(snap.weeks.map((x) => x.lecture))}%</b><span>Lectures read</span></div>
         <div class="card"><b id="sumB">${avg(snap.weeks.map((x) => x.laboratory))}%</b><span>Lab steps done</span></div>
@@ -736,7 +748,7 @@
     if (syncOn()) { loadScores(); $("#scRefresh").addEventListener("click", loadScores); }
     wireDevice();
     if (syncOn()) {
-      const st = () => { const t = store.get("synced", null), on = store.get("consent", false), er = store.get("syncerr", null); $("#syncState").textContent = !on ? "Sharing is off." : er ? SYNC_MSG[er] : t ? "Last sent: " + new Date(t).toLocaleString() : "Sharing is on. Your progress is sent automatically while you study."; };
+      const st = () => { const t = store.get("synced", null), on = store.get("consent", false), er = store.get("syncerr", null); $("#syncState").textContent = !on ? "Sharing is off." : er ? SYNC_MSG[er] : t ? "Last sent: " + new Date(t).toLocaleString() : "Sharing is on. Your progress is sent automatically while you study and when you close the page."; };
       st();
       $("#stConsent").addEventListener("change", (e) => { store.set("consent", e.target.checked); st(); if (e.target.checked) scheduleSync(); });
       $("#syncNow").addEventListener("click", async () => {
@@ -825,7 +837,7 @@
       <p>How to register, how your progress is counted, how to submit your lab work and how to see your scores.</p></section>
       <nav class="card gtoc" aria-label="In this guide"><b>In this guide:</b> <a href="#register">Register</a> · <a href="#tracked">What is tracked</a> · <a href="#quizzes">Quizzes</a> · <a href="#submit-work">Submit your work</a> · <a href="#scores">Your scores</a> · <a href="#device">Another device</a> · <a href="#messages">Messages</a> · <a href="#privacy">Privacy</a></nav>
       ${sec("register", "1. Register once", ol(["On your first visit, a <b>Register for CSAE 104</b> form appears.", "Enter your <b>full name</b>, choose your <b>section</b> (3B, 3E, 3F or 3G) and enter your <b>student ID number</b>.", "Tick the box to agree that your progress is sent to your instructor, then click <b>Register</b>."]) + ul(["Use your real student ID. Your instructor has a class list, and your ID must be on it.", "After you register, your name, section and ID are <b>locked</b>. If something is wrong, ask your instructor.", "Not a student of this class? Click <b>I am not a student of this class</b>. Nothing is sent."]))}
-      ${sec("tracked", "2. What the site tracks", tbl(["What", "How it counts"], [["<b>Lectures</b>", "A week fills up as you scroll through its sections. Read the whole week to reach 100%."], ["<b>Labs</b>", "Tick every step and every item on the &quot;You are done when&quot; checklist."], ["<b>Quizzes</b>", "Your score is recorded when you answer all the multiple-choice questions."]]) + "<p>Your progress is saved on your device and sent to your instructor automatically a few seconds after you make progress. Your <b>notes</b> and typed answers stay on your device and are never sent.</p>")}
+      ${sec("tracked", "2. What the site tracks", tbl(["What", "How it counts"], [["<b>Lectures</b>", "A week fills up as you scroll through its sections. Read the whole week to reach 100%."], ["<b>Labs</b>", "Tick every step and every item on the &quot;You are done when&quot; checklist."], ["<b>Quizzes</b>", "Your score is recorded when you answer all the multiple-choice questions."]]) + "<p>Your progress is saved on your device and sent to your instructor automatically a few seconds after you make progress, and again when you close the page. Your <b>notes</b> and typed answers stay on your device and are never sent.</p>")}
       ${sec("quizzes", "3. Quizzes: one attempt only", ul(["Each quiz can be taken <b>once</b>. An answer locks as soon as you pick it.", "Answers stay locked after you reload the page, and &quot;Reset my progress&quot; does not clear them.", "Your first score is the one your instructor sees."]))}
       ${sec("submit-work", "4. Submit your lab work", "<p>Your work lives in <b>one GitHub repository for the whole semester</b>, named <code>csae104-notices-board</code>, with a folder for each lab. You create it in Lab 1 and connect it to GitHub in Lab 5.</p><h3>After each lab</h3><pre><code>git add .\ngit commit -m &quot;Finish Lab 6&quot;\ngit push</code></pre><h3>For project checkpoints (Weeks 6, 8, 11, 16 and 17)</h3><pre><code>git tag checkpoint-1\ngit push --tags</code></pre><p>Use <code>checkpoint-2</code>, <code>checkpoint-3</code> and so on for the later ones.</p><h3>Then submit the link</h3>" + ol(["Open <a href=\"progress.html#submit\">My progress</a> and find <b>Submit my work</b>.", "Choose what you are submitting, paste your repository link, and add the tag or folder. For Weeks 15 and 17 add your deployed site address.", "Click <b>Submit</b>. You can submit again to replace your link; your first submission time is kept."]) + ul(["If your repository is private, add the GitHub account shown on the page as a collaborator.", "You must be registered, and you must submit from the device you registered on.", "Only <code>https://github.com/...</code> links are accepted."]))}
       ${sec("scores", "5. See your scores", "<p>When your instructor has checked your work and released the scores, they appear under <a href=\"progress.html#scores\">My progress &rarr; My scores</a> with your score out of the total, your total so far, and any feedback. Press <b>Refresh my scores</b> to check for new ones. You see only your own scores.</p>")}
