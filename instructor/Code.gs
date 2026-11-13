@@ -53,7 +53,7 @@ function handleSubmission_(p) {
   const cid = str_(d.clientId, 64);
   if (cid.length < 12) return out_({ ok: false, error: "client" });
   const item = str_(d.item, 12);
-  if (!/^(lab(1[0-7]|[1-9])|cp[1-5]|final)$/.test(item)) return out_({ ok: false, error: "item" });
+  if (!/^(lab(1[0-7]|[1-8])|cp[1-5]|final)$/.test(item)) return out_({ ok: false, error: "item" });
   const repo = str_(d.repo, 300);
   if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/[\w\/.%#~+-]*)?$/.test(repo)) return out_({ ok: false, error: "repo" });
   const deploy = str_(d.deploy, 300);

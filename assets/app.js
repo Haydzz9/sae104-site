@@ -505,7 +505,7 @@
 
   /* ---------- submit work (GitHub links) ---------- */
   const SUB_ITEMS = () => {
-    const labs = (C.laboratory || []).filter((w) => w.week <= 17).map((w) => ({ id: "lab" + w.week, label: `Lab ${w.week}: ${w.title}` }));
+    const labs = (C.laboratory || []).filter((w) => w.week <= 17 && w.week !== 9).map((w) => ({ id: "lab" + w.week, label: `Lab ${w.week}: ${w.title}` }));
     const cps = [[1, 6, "Notices API"], [2, 8, "persistent notices API"], [3, 11, "Notices API on PostgreSQL"], [4, 16, "authenticated Notices Board"], [5, 17, "deployed application URL"]]
       .map(([n, w, t]) => ({ id: "cp" + n, label: `Project Checkpoint ${n} (Week ${w}): ${t}` }));
     return [...cps, ...labs, { id: "final", label: "Final project: Campus Notices Board (Week 18)" }];
