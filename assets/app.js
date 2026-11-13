@@ -676,6 +676,7 @@
     const cached = store.get("scores", null); if (cached) drawScores(cached.items, cached.at);
     if (!store.get("locked", false)) { if (!cached) st.textContent = "Register and share your progress first. Your scores appear here after your instructor releases them."; return; }
     const s = getStudent();
+    if (!ID_RE.test(s.id || "")) { st.textContent = "Your student ID is missing. Enter it in the box at the top of this page, then press Send my progress now."; return; }
     st.textContent = cached ? st.textContent + " (checking for updates...)" : "Loading...";
     try {
       const res = await (await fetch(CFG.endpoint, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ key: CFG.key || "", type: "scores", data: { clientId: deviceId(), name: s.name, id: s.id } }) })).json();
@@ -685,7 +686,7 @@
   }
 
   function progressPage() {
-    const s = getStudent(), snap = snapshot(), lk = syncOn() && store.get("locked", false);
+    const s = getStudent(), snap = snapshot(), noId = !ID_RE.test(s.id || ""), lk = syncOn() && store.get("locked", false) && !noId;
     const rows = snap.weeks.map((x) => {
       const w = C.lecture[x.week - 1];
       return `<div class="net-row prow"><span class="nm"><span class="wk">${String(x.week).padStart(2, "0")}</span><span class="tt">${esc(w.title)}</span></span>
@@ -699,6 +700,7 @@
         <label>Section<select id="stSec" ${lk ? "disabled" : ""}><option value="">Choose</option>${SECTIONS.map((x) => `<option ${s.section === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
         <label>Student ID number<input id="stId" value="${esc(s.id)}" ${lk ? "readonly" : ""} required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9 \\-]{2,29}" placeholder="Your student ID number"></label>
       </form>
+      ${syncOn() && store.get("locked", false) && noId ? `<p class="small lockmsg" style="color:var(--bad)">Your account was created before the student ID was required. Enter your student ID number above, then press <b>Send my progress now</b>.</p>` : ""}
       ${lk ? `<p class="small lockmsg">Your name, section and ID are locked because your progress is shared with your instructor. If something is wrong, ask your instructor to unlock it.</p>` : ""}
       ${syncOn() ? `<div class="card consent"><label class="chk"><input type="checkbox" id="stConsent" ${store.get("consent", false) ? "checked" : ""}><span><b>Share my progress with my instructor.</b> My name, section, student ID (if given), percentages and quiz scores are sent to a Google Sheet that only my instructor reads. My notes are never sent. I can untick this any time.</span></label><p class="small" id="syncState"></p><button class="btn" type="button" id="syncNow">Send my progress now</button></div>` : ""}
       <div class="sums">
