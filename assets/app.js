@@ -16,7 +16,7 @@
   const store = {
     get(k, d) { try { const v = localStorage.getItem("csae104:" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem("csae104:" + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter((k) => k.startsWith("csae104:") && !/:(theme|cid|student|locked|consent|syncerr|synced)$/.test(k)).forEach((k) => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter((k) => k.startsWith("csae104:") && !/:(theme|cid|student|locked|consent|syncerr|synced|subs)$/.test(k)).forEach((k) => localStorage.removeItem(k)); } catch (e) {} },
   };
 
   /* ---------- theme ---------- */
@@ -502,6 +502,61 @@
   }
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && syncTimer) syncNow(); });
 
+  /* ---------- submit work (GitHub links) ---------- */
+  const SUB_ITEMS = () => {
+    const labs = (C.laboratory || []).filter((w) => w.week <= 17).map((w) => ({ id: "lab" + w.week, label: `Lab ${w.week}: ${w.title}` }));
+    const cps = [[1, 6, "Notices API"], [2, 8, "persistent notices API"], [3, 11, "Notices API on PostgreSQL"], [4, 16, "authenticated Notices Board"], [5, 17, "deployed application URL"]]
+      .map(([n, w, t]) => ({ id: "cp" + n, label: `Project Checkpoint ${n} (Week ${w}): ${t}` }));
+    return [...cps, ...labs, { id: "final", label: "Final project: Campus Notices Board (Week 18)" }];
+  };
+  const GH_RE = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/[\w\/.%#~+-]*)?$/;
+  const DEPLOY_RE = /^https:\/\/[\w.-]+(:\d+)?(\/[\w\/.%#~+?=&-]*)?$/;
+  const SUB_MSG = Object.assign({
+    item: "Choose what you are submitting.", repo: "Use your GitHub link, for example https://github.com/your-name/csae104-notices-board.",
+    deploy: "The deployed site must start with https://.", unregistered: "Share your progress first (tick the box and click Send my progress now), then submit.",
+  }, SYNC_MSG);
+  async function submitWork(f) {
+    const s = getStudent();
+    const body = JSON.stringify({ key: CFG.key || "", type: "submission", data: { clientId: deviceId(), name: s.name, id: s.id, item: f.item, repo: f.repo, ref: f.ref, deploy: f.deploy, note: f.note } });
+    let res;
+    try { res = await (await fetch(CFG.endpoint, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body })).json(); }
+    catch (e) { return { ok: false, error: "network" }; }
+    if (res && res.ok) { const all = store.get("subs", {}); all[f.item] = { repo: f.repo, ref: f.ref, deploy: f.deploy, at: new Date().toISOString() }; store.set("subs", all); }
+    return res || { ok: false, error: "unknown" };
+  }
+  function submitCard() {
+    if (!syncOn()) return "";
+    const done = store.get("subs", {}), items = SUB_ITEMS();
+    const owner = CFG.instructorGithub ? ` If your repository is private, add <b>${esc(CFG.instructorGithub)}</b> as a collaborator on GitHub so your instructor can open it.` : "";
+    const list = items.filter((i) => done[i.id]).map((i) => `<li><b>${esc(i.label)}</b><br><a href="${esc(done[i.id].repo)}" target="_blank" rel="noopener">${esc(done[i.id].repo)}</a> <small>sent ${new Date(done[i.id].at).toLocaleString()}</small></li>`).join("");
+    return `<section class="card submit" id="submit"><h2>Submit my work</h2>
+      <p class="small">Keep your whole project in one GitHub repository, with one folder for each lab. For a project checkpoint, tag the commit (for example <code>git tag checkpoint-1</code> then <code>git push --tags</code>) and put the tag name below.${owner}</p>
+      <form id="subForm" class="sform" autocomplete="off">
+        <label>What are you submitting?<select id="subItem" required><option value="">Choose</option>${items.map((i) => `<option value="${i.id}">${esc(i.label)}</option>`).join("")}</select></label>
+        <label>GitHub repository link<input id="subRepo" type="url" required placeholder="https://github.com/your-name/csae104-notices-board"></label>
+        <label>Tag or folder (optional)<input id="subRef" maxlength="80" placeholder="checkpoint-1 or week-06"></label>
+        <label>Deployed site (Weeks 15 and 17)<input id="subDeploy" type="url" placeholder="https://..."></label>
+        <label>Note to instructor (optional)<input id="subNote" maxlength="200"></label>
+        <button class="btn solid" type="submit">Submit</button>
+      </form>
+      <p class="small" id="subMsg" role="status"></p>
+      ${list ? `<h3>Already submitted</h3><ul class="sublist">${list}</ul>` : ""}</section>`;
+  }
+  function wireSubmit() {
+    const f = $("#subForm"); if (!f) return;
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const m = $("#subMsg"), v = { item: $("#subItem").value, repo: $("#subRepo").value.trim(), ref: $("#subRef").value.trim(), deploy: $("#subDeploy").value.trim(), note: $("#subNote").value.trim() };
+      const bad = !v.item ? "item" : !GH_RE.test(v.repo) ? "repo" : v.deploy && !DEPLOY_RE.test(v.deploy) ? "deploy" : null;
+      if (bad) { m.textContent = SUB_MSG[bad]; m.style.color = "var(--bad)"; return; }
+      if (!store.get("locked", false)) { m.textContent = SUB_MSG.unregistered; m.style.color = "var(--bad)"; return; }
+      m.style.color = ""; m.textContent = "Sending...";
+      const r = await submitWork(v);
+      if (r.ok) { m.textContent = "Submitted. You can submit again to replace it."; setTimeout(() => location.reload(), 900); }
+      else { m.style.color = "var(--bad)"; m.textContent = r.error === "network" ? "Could not reach the server. Check your internet and try again." : (SUB_MSG[r.error] || "Could not submit. Tell your instructor."); }
+    });
+  }
+
   function progressPage() {
     const s = getStudent(), snap = snapshot(), lk = syncOn() && store.get("locked", false);
     const rows = snap.weeks.map((x) => {
@@ -525,6 +580,7 @@
         <div class="card"><b id="sumQ">${quizAvg(snap.weeks)}%</b><span>Average best quiz score</span></div>
       </div>
       <div class="net"><div class="net-head prow"><span>Week</span><span>Lecture</span><span>Laboratory</span><span>Quiz</span></div>${rows}</div>
+      ${submitCard()}
       <div class="pactions">
         <button class="btn solid" type="button" id="dlJson">Download my progress file</button>
         <button class="btn" type="button" id="dlCsv">Download as CSV</button>
@@ -545,6 +601,7 @@
     };
     $("#dlJson").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.json`, JSON.stringify(d, null, 2), "application/json"); });
     $("#dlCsv").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.csv`, csv([d]), "text/csv"); });
+    wireSubmit();
     if (syncOn()) {
       const st = () => { const t = store.get("synced", null), on = store.get("consent", false), er = store.get("syncerr", null); $("#syncState").textContent = !on ? "Sharing is off." : er ? SYNC_MSG[er] : t ? "Last sent: " + new Date(t).toLocaleString() : "Sharing is on. Your progress is sent automatically while you study."; };
       st();

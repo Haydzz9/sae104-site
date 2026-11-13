@@ -47,3 +47,17 @@ Commit and push. Students then see a "Share my progress with my instructor" box 
 - This is a deterrent, not a login. A student who clears their browser data and uses a new name can still start a new row unless you use the Roster, so keep an eye out for names that are not on your class list.
 
 After changing the script, always use **Deploy > Manage deployments > Edit > New version > Deploy**.
+
+## Receiving student work (GitHub links)
+Students keep one GitHub repository for the whole semester, named `csae104-notices-board`, with one folder per lab. They finish each lab with `git add .`, `git commit` and `git push`, and for the five project checkpoints they also add a tag (`git tag checkpoint-1` and so on, then `git push --tags`).
+
+They then open **My progress > Submit my work**, choose the lab or checkpoint, and paste the repository link (plus the tag name, and the deployed address for Weeks 15 and 17).
+
+- Submissions arrive in a **Submissions** tab: one row per student per item, with a clickable repo link, the tag or folder, the deployed site, the first submission time, the last update and how many times it was sent. Run `setup` once, or just deploy the new version, and the tab is created on the first submission.
+- A student can submit an item again to replace the link. The first submission time is kept.
+- Only real `https://github.com/...` links are accepted, so other sites and spreadsheet formulas are refused.
+- A student must have shared their progress first (the name lock), and must submit from the same device. Submissions are matched to the student, so nobody can submit under a classmate's name.
+- If a repository is private, students add the GitHub account in `instructorGithub` (in `assets/config.js`) as a collaborator. Change that value to your own account.
+- Grading: open the repo, check the commit history (dates and regular commits), open the tag for the checkpoint, and run or read the code. Compare "First submitted" with your deadline for late work.
+
+After changing the script, always use **Deploy > Manage deployments > Edit > New version > Deploy**.

@@ -3,7 +3,7 @@
  * Paste this into a script attached to your Google Sheet, then deploy it as a web app.
  * Full steps: instructor/google-sheet-setup.md
  */
-const SECRET = "change-this-secret";           // must match "key" in assets/config.js
+const SECRET = "dragonballz";           // must match "key" in assets/config.js
 const SECTIONS = ["3B", "3E", "3F", "3G"];
 const WEEKS = 18;
 const DATA = "Progress", SETTINGS = "Settings", ROSTER = "Roster";
@@ -32,10 +32,73 @@ function roster_() {
     .map(function (r) { return { name: str_(r[0]), section: str_(r[1], 5), id: str_(r[2], 30) }; });
 }
 
+// ---------- work submissions (GitHub links) ----------
+const SUBS = "Submissions";
+function subsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SUBS);
+  if (!sh) {
+    sh = ss.insertSheet(SUBS);
+    sh.getRange(1, 1, 1, 11).setValues([["Key", "Name", "Section", "Item", "Repo link", "Tag or folder", "Deployed site", "Note", "First submitted", "Last updated", "Times"]]).setFontWeight("bold").setBackground("#E8EDF3");
+    sh.setFrozenRows(1); sh.hideColumns(1);
+    sh.getRange("I:J").setNumberFormat("yyyy-mm-dd hh:mm");
+    sh.setColumnWidth(2, 200); sh.setColumnWidth(5, 320); sh.setColumnWidth(7, 240); sh.setColumnWidth(8, 220);
+  }
+  return sh;
+}
+function link_(u) { return u ? '=HYPERLINK("' + u + '","' + u + '")' : ""; }
+
+function handleSubmission_(p) {
+  const d = p.data || {};
+  const cid = str_(d.clientId, 64);
+  if (cid.length < 12) return out_({ ok: false, error: "client" });
+  const item = str_(d.item, 12);
+  if (!/^(lab(1[0-7]|[1-9])|cp[1-5]|final)$/.test(item)) return out_({ ok: false, error: "item" });
+  const repo = str_(d.repo, 300);
+  if (!/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/[\w\/.%#~+-]*)?$/.test(repo)) return out_({ ok: false, error: "repo" });
+  const deploy = str_(d.deploy, 300);
+  if (deploy && !/^https:\/\/[\w.-]+(:\d+)?(\/[\w\/.%#~+?=&-]*)?$/.test(deploy)) return out_({ ok: false, error: "deploy" });
+  const ref = str_(d.ref, 80), note = str_(d.note, 200);
+
+  let name = str_(d.name), id = str_(d.id, 30);
+  const roster = roster_();
+  if (roster.length) { const hit = roster.filter(function (r) { return norm_(r.name) === norm_(name); })[0]; if (!hit) return out_({ ok: false, error: "roster" }); name = hit.name; id = hit.id || id; }
+  const key = norm_(name) + "|" + id.toLowerCase();
+
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    // the student must already be registered, and this must be the device that registered the name
+    const pg = sheet_(), plast = pg.getLastRow();
+    let who = null;
+    if (plast > 1) {
+      const rows = pg.getRange(2, 1, plast - 1, COL.cid).getValues();
+      for (let i = 0; i < rows.length; i++) if (rows[i][0] === key) { who = { name: rows[i][1], section: rows[i][2], cid: String(rows[i][COL.cid - 1] || "") }; break; }
+    }
+    if (!who || !who.cid || who.cid !== cid) return out_({ ok: false, error: "unregistered" });
+
+    const sh = subsSheet_(), last = sh.getLastRow();
+    let row = 0;
+    if (last > 1) { const ks = sh.getRange(2, 1, last - 1, 4).getValues(); for (let i = 0; i < ks.length; i++) if (ks[i][0] === key && ks[i][3] === item) { row = i + 2; break; } }
+    const now = new Date();
+    if (!row) {
+      row = last + 1;
+      sh.getRange(row, 1, 1, 4).setValues([[key, safe_(String(who.name)), who.section, item]]);
+      sh.getRange(row, 9).setValue(now); sh.getRange(row, 11).setValue(1);
+    } else sh.getRange(row, 11).setValue((Number(sh.getRange(row, 11).getValue()) || 1) + 1);
+    sh.getRange(row, 5).setFormula(link_(repo));
+    sh.getRange(row, 6).setValue(safe_(ref));
+    sh.getRange(row, 7).setFormula(link_(deploy));
+    sh.getRange(row, 8).setValue(safe_(note));
+    sh.getRange(row, 10).setValue(now);
+  } finally { lock.releaseLock(); }
+  return out_({ ok: true });
+}
+
 function doPost(e) {
   try {
     const p = JSON.parse(e.postData.contents);
     if (p.key !== SECRET) return out_({ ok: false, error: "key" });
+    if (p.type === "submission") return handleSubmission_(p);
     const d = p.data;
     if (!d || d.app !== "csae104-progress" || !d.student || !Array.isArray(d.weeks)) return out_({ ok: false, error: "format" });
     const cid = str_(d.clientId, 64);
@@ -145,6 +208,7 @@ function setup() {
     r.getRange("A1:C1").setValues([["Name", "Section", "Student ID"]]).setFontWeight("bold").setBackground("#E8EDF3");
     r.getRange("E1").setValue("Optional. List your students here (Name, Section 3B/3E/3F/3G, Student ID). When this sheet has names, only these names can sync. Leave it empty to accept any name.");
   }
+  subsSheet_();
   let sh = ss.getSheetByName(DATA);
   if (!sh) { sh = ss.insertSheet(DATA); setupHeaders_(sh); }
   const red = SpreadsheetApp.newConditionalFormatRule().whenNumberLessThan(80).setBackground("#FADAD7").setRanges([sh.getRange(2, 7, 500, 2), sh.getRange(2, COL.lec, 500, 2 * WEEKS)]).build();
