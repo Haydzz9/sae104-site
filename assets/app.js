@@ -478,10 +478,11 @@
   const SYNC_MSG = {
     claimed: "This name is already registered on another device. Ask your instructor to unlock it.",
     identity: "This device is registered under a different name, so the name cannot be changed. Ask your instructor if it is wrong.",
-    roster: "Your name is not in the class list. Type it exactly as your instructor listed it.",
+    roster: "Your name or student ID is not in the class list. Check your student ID number.",
+    id: "Enter your student ID number (letters, numbers and dashes, at least 3 characters).",
     client: "Could not identify this device. Reload the page and try again.",
   };
-  function syncReady() { const s = getStudent(); return syncOn() && store.get("consent", false) && s.name && s.section; }
+  function syncReady() { const s = getStudent(); return syncOn() && store.get("consent", false) && s.name && s.section && s.id; }
   let syncTimer = null;
   function scheduleSync() { if (!syncReady() || store.get("syncerr", null)) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 4000); }
   async function syncNow(force) {
@@ -570,7 +571,7 @@
       <form class="card sform" id="studentForm" autocomplete="off">
         <label>Full name<input id="stName" value="${esc(s.name)}" ${lk ? "readonly" : ""} required placeholder="Surname, Given name"></label>
         <label>Section<select id="stSec" ${lk ? "disabled" : ""}><option value="">Choose</option>${SECTIONS.map((x) => `<option ${s.section === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
-        <label>Student ID (optional)<input id="stId" value="${esc(s.id)}" ${lk ? "readonly" : ""} placeholder="e.g. 24-0001"></label>
+        <label>Student ID number<input id="stId" value="${esc(s.id)}" ${lk ? "readonly" : ""} required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9 \\-]{2,29}" placeholder="Your student ID number"></label>
       </form>
       ${lk ? `<p class="small lockmsg">Your name, section and ID are locked because your progress is shared with your instructor. If something is wrong, ask your instructor to unlock it.</p>` : ""}
       ${syncOn() ? `<div class="card consent"><label class="chk"><input type="checkbox" id="stConsent" ${store.get("consent", false) ? "checked" : ""}><span><b>Share my progress with my instructor.</b> My name, section, student ID (if given), percentages and quiz scores are sent to a Google Sheet that only my instructor reads. My notes are never sent. I can untick this any time.</span></label><p class="small" id="syncState"></p><button class="btn" type="button" id="syncNow">Send my progress now</button></div>` : ""}
@@ -586,7 +587,7 @@
         <button class="btn" type="button" id="dlCsv">Download as CSV</button>
         <button class="btn" type="button" id="prn">Print or save as PDF</button>
       </div>
-      <p class="net-note" id="pmsg" role="status">Your name and section are required before you download. The file contains only your name, section, student ID, and your percentages and quiz scores. It does not contain your notes. Your instructor asks you to submit the file on Google Classroom.</p>
+      <p class="net-note" id="pmsg" role="status">Your name, section and student ID number are required before you download. The file contains only your name, section, student ID, and your percentages and quiz scores. It does not contain your notes. Your instructor asks you to submit the file on Google Classroom.</p>
     </main>`;
   }
   function wireProgress() {
@@ -595,7 +596,7 @@
     $("#studentForm").addEventListener("submit", (e) => e.preventDefault());
     const ready = () => {
       save(); const s = getStudent();
-      if (!s.name || !s.section) { $("#pmsg").textContent = "Please enter your full name and choose your section first."; $("#pmsg").style.color = "var(--bad)"; $("#stName").focus(); return null; }
+      if (!s.name || !s.section || !/^[A-Za-z0-9][A-Za-z0-9 -]{2,29}$/.test(s.id || "")) { $("#pmsg").textContent = "Please enter your full name, choose your section and enter your student ID number first."; $("#pmsg").style.color = "var(--bad)"; $("#stName").focus(); return null; }
       $("#pmsg").style.color = ""; $("#pmsg").textContent = "Downloaded. Now submit the file on Google Classroom. Download a new file whenever your instructor asks for an update.";
       return snapshot();
     };
@@ -609,7 +610,7 @@
       $("#syncNow").addEventListener("click", async () => {
         save(); const s = getStudent();
         if (!store.get("consent", false)) { $("#syncState").textContent = "Tick the box above first."; return; }
-        if (!s.name || !s.section) { $("#syncState").textContent = "Enter your full name and choose your section first."; return; }
+        if (!s.name || !s.section || !s.id) { $("#syncState").textContent = "Enter your full name, choose your section and enter your student ID number first."; return; }
         $("#syncState").textContent = "Sending..."; const r = await syncNow(); st(); if (!r.ok && r.error === "network") $("#syncState").textContent = "Could not reach the server. Check your internet and try again."; else if (r.ok) setTimeout(() => location.reload(), 600);
       });
       $("#studentForm").addEventListener("input", scheduleSync);

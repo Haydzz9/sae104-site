@@ -60,10 +60,9 @@ function handleSubmission_(p) {
   if (deploy && !/^https:\/\/[\w.-]+(:\d+)?(\/[\w\/.%#~+?=&-]*)?$/.test(deploy)) return out_({ ok: false, error: "deploy" });
   const ref = str_(d.ref, 80), note = str_(d.note, 200);
 
-  let name = str_(d.name), id = str_(d.id, 30);
-  const roster = roster_();
-  if (roster.length) { const hit = roster.filter(function (r) { return norm_(r.name) === norm_(name); })[0]; if (!hit) return out_({ ok: false, error: "roster" }); name = hit.name; id = hit.id || id; }
-  const key = norm_(name) + "|" + id.toLowerCase();
+  const who0 = resolve_(str_(d.name), "", d.id);
+  if (who0.error) return out_({ ok: false, error: who0.error });
+  const key = who0.key;
 
   const lock = LockService.getScriptLock(); lock.waitLock(20000);
   try {
@@ -94,6 +93,26 @@ function handleSubmission_(p) {
   return out_({ ok: true });
 }
 
+function normId_(s) { return String(s || "").toLowerCase().replace(/s+/g, ""); }
+
+// Works out who a request is from. The student ID is required and is the unique key.
+// With a Roster: IDs listed there must match; names listed without IDs are matched by name.
+function resolve_(name, section, id) {
+  id = str_(id, 30);
+  const roster = roster_();
+  if (roster.length) {
+    const withIds = roster.filter(function (r) { return r.id; });
+    let hit = null;
+    if (id) hit = withIds.filter(function (r) { return normId_(r.id) === normId_(id); })[0] || null;
+    if (!hit && !withIds.length) hit = roster.filter(function (r) { return norm_(r.name) === norm_(name); })[0] || null;
+    if (!hit) return { error: id || !withIds.length ? "roster" : "id" };
+    name = hit.name; section = hit.section || section; if (hit.id) id = hit.id;
+  }
+  if (!id || !/^[A-Za-z0-9][A-Za-z0-9 -]{2,29}$/.test(id)) return { error: "id" };
+  if (!name) return { error: "student" };
+  return { name: name, section: section, id: id, key: normId_(id) };
+}
+
 function doPost(e) {
   try {
     const p = JSON.parse(e.postData.contents);
@@ -103,15 +122,10 @@ function doPost(e) {
     if (!d || d.app !== "csae104-progress" || !d.student || !Array.isArray(d.weeks)) return out_({ ok: false, error: "format" });
     const cid = str_(d.clientId, 64);
     if (cid.length < 12) return out_({ ok: false, error: "client" });
-    let name = str_(d.student.name), section = str_(d.student.section, 5), id = str_(d.student.id, 30);
-
-    const roster = roster_();
-    if (roster.length) {
-      const hit = roster.filter(function (r) { return norm_(r.name) === norm_(name); })[0];
-      if (!hit) return out_({ ok: false, error: "roster" });
-      name = hit.name; section = hit.section || section; id = hit.id || id;
-    }
-    if (!name || SECTIONS.indexOf(section) < 0) return out_({ ok: false, error: "student" });
+    const who = resolve_(str_(d.student.name), str_(d.student.section, 5), d.student.id);
+    if (who.error) return out_({ ok: false, error: who.error });
+    const name = who.name, section = who.section, id = who.id;
+    if (SECTIONS.indexOf(section) < 0) return out_({ ok: false, error: "student" });
 
     const lec = [], lab = [], quiz = [];
     for (let w = 1; w <= WEEKS; w++) {
@@ -120,7 +134,7 @@ function doPost(e) {
       quiz.push(x.quiz && x.quiz.total ? Math.max(0, Math.min(+x.quiz.total, +x.quiz.best || 0)) + "/" + (+x.quiz.total) : "");
     }
     const qp = quiz.filter(String).map(function (q) { const a = q.split("/"); return Math.round((a[0] / a[1]) * 100); });
-    const key = norm_(name) + "|" + id.toLowerCase();
+    const key = who.key;
 
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
     try {
