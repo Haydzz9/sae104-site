@@ -8,6 +8,7 @@ Every week page also has a "Where this fits in the syllabus" panel taken from Pa
 Progress is saved in each student's browser, so the site collects nothing by itself.
 1. Students open **My progress** (`progress.html`), enter their name and section, and click **Download my progress file**. They submit the `.json` file on Google Classroom.
 2. You open **Instructor view** (`teacher.html`, linked in the footer), choose all the submitted files, and see each student's lecture, lab and quiz progress, who is behind, and a class CSV you can download.
+For live tracking without files, see `instructor/google-sheet-setup.md`: a Google Sheet that fills itself while students study (students must opt in on the My progress page).
 Files are read in your browser only and are never uploaded. A file can be edited by a student, so treat it as self-reported progress.
 
 ## Publish on GitHub Pages

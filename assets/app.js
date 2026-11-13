@@ -100,7 +100,7 @@
   function footer() {
     return `<footer class="site"><div class="wrap">
       <div>CSAE 104 Web Programming, College of Computer Science, DMMMSU-SLUC<br>Haydee D. Limson, MIS. 2nd Semester AY 2026-2027</div>
-      <div>Your progress is saved in this browser only. <a href="progress.html">Export it</a> to share with your instructor. <a href="teacher.html">Instructor view</a>. <button type="button" id="resetBtn">Reset my progress</button></div>
+      <div>Your progress is saved in this browser. <a href="progress.html">Share or export it</a> for your instructor. <a href="teacher.html">Instructor view</a>. <button type="button" id="resetBtn">Reset my progress</button></div>
     </div></footer>
     <dialog class="search" id="searchDlg" aria-label="Search"><input id="searchIn" type="search" placeholder="Search lectures and labs, for example: middleware" autocomplete="off"><ul id="searchOut"></ul></dialog>`;
   }
@@ -332,7 +332,7 @@
       $("#score").textContent = `Score: ${right}/${answered} of ${total}`;
       if (answered === total) {
         const best = store.get(`quiz:${t}:${w.week}`, null);
-        store.set("active", new Date().toISOString());
+        store.set("active", new Date().toISOString()); scheduleSync();
         if (!best || right > best.best) store.set(`quiz:${t}:${w.week}`, { best: right, total });
         $("#score").textContent = `Final score: ${right}/${total}`;
       }
@@ -397,7 +397,7 @@
       });
     };
     const mark = (field, id, on) => {
-      store.set("active", new Date().toISOString());
+      store.set("active", new Date().toISOString()); scheduleSync();
       const P = getP(t, n), set = new Set(P[field]);
       on ? set.add(id) : set.delete(id); P[field] = Array.from(set); store.set(pkey(t, n), P); upd();
     };
@@ -463,6 +463,21 @@
   const slugName = (s) => (s || "student").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "student";
   const bar = (p) => `<span class="pbar"><span class="meter" style="--p:${p}%"><i></i></span><b>${p}%</b></span>`;
 
+  /* ---------- optional live sync to the instructor's Google Sheet ---------- */
+  const CFG = window.CSAE_CONFIG || {};
+  const syncOn = () => !!CFG.endpoint;
+  function syncReady() { const s = getStudent(); return syncOn() && store.get("consent", false) && s.name && s.section; }
+  let syncTimer = null;
+  function scheduleSync() { if (!syncReady()) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 4000); }
+  function syncNow() {
+    if (!syncReady()) return Promise.resolve(false);
+    clearTimeout(syncTimer);
+    const body = JSON.stringify({ key: CFG.key || "", data: snapshot() });
+    return fetch(CFG.endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body, keepalive: body.length < 60000 })
+      .then(() => { store.set("synced", new Date().toISOString()); return true; }, () => false);
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && syncTimer) syncNow(); });
+
   function progressPage() {
     const s = getStudent(), snap = snapshot();
     const rows = snap.weeks.map((x) => {
@@ -478,6 +493,7 @@
         <label>Section<select id="stSec"><option value="">Choose</option>${SECTIONS.map((x) => `<option ${s.section === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
         <label>Student ID (optional)<input id="stId" value="${esc(s.id)}" placeholder="e.g. 24-0001"></label>
       </form>
+      ${syncOn() ? `<div class="card consent"><label class="chk"><input type="checkbox" id="stConsent" ${store.get("consent", false) ? "checked" : ""}><span><b>Share my progress with my instructor.</b> My name, section, student ID (if given), percentages and quiz scores are sent to a Google Sheet that only my instructor reads. My notes are never sent. I can untick this any time.</span></label><p class="small" id="syncState"></p><button class="btn" type="button" id="syncNow">Send my progress now</button></div>` : ""}
       <div class="sums">
         <div class="card"><b id="sumL">${avg(snap.weeks.map((x) => x.lecture))}%</b><span>Lectures read</span></div>
         <div class="card"><b id="sumB">${avg(snap.weeks.map((x) => x.laboratory))}%</b><span>Lab steps done</span></div>
@@ -504,6 +520,18 @@
     };
     $("#dlJson").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.json`, JSON.stringify(d, null, 2), "application/json"); });
     $("#dlCsv").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.csv`, csv([d]), "text/csv"); });
+    if (syncOn()) {
+      const st = () => { const t = store.get("synced", null), on = store.get("consent", false); $("#syncState").textContent = !on ? "Sharing is off." : t ? "Last sent: " + new Date(t).toLocaleString() : "Sharing is on. Your progress is sent automatically while you study."; };
+      st();
+      $("#stConsent").addEventListener("change", (e) => { store.set("consent", e.target.checked); st(); if (e.target.checked) scheduleSync(); });
+      $("#syncNow").addEventListener("click", async () => {
+        save(); const s = getStudent();
+        if (!store.get("consent", false)) { $("#syncState").textContent = "Tick the box above first."; return; }
+        if (!s.name || !s.section) { $("#syncState").textContent = "Enter your full name and choose your section first."; return; }
+        $("#syncState").textContent = "Sending..."; await syncNow(); st();
+      });
+      $("#studentForm").addEventListener("input", scheduleSync);
+    }
     $("#prn").addEventListener("click", () => { save(); window.print(); });
   }
 
@@ -590,6 +618,7 @@
     document.title = title;
     $("#app").innerHTML = header(kind) + html + footer();
     wireShell();
+    scheduleSync();
     if (page === "progress") wireProgress();
     if (page === "teacher") wireTeacher();
     if (page === "week") wireWeek(kind, parseInt(q.get("w"), 10) || 1);
