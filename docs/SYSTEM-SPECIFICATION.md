@@ -41,7 +41,6 @@ Out of scope: logins with passwords, grading by the system itself, checking the 
 |---|---|---|
 | Site pages and scripts | `index.html`, `lecture.html`, `laboratory.html`, `week.html`, `assets/app.js`, `assets/style.css` | Course content, progress tracking, forms |
 | My progress page | `progress.html` | Student details, progress table, scores, work submission, backup, downloads |
-| Instructor file viewer | `teacher.html` | Optional: loads progress files that students downloaded, with no sheet needed. The files are read in the browser only |
 | Configuration | `assets/config.js` | `endpoint`, `key`, `instructorGithub` |
 | Collector script | `instructor/Code.gs` | Apps Script web app; writes the sheet; serves scores |
 | Course data | `data/lecture.js`, `data/laboratory.js` | 18 weeks of lectures and labs (the progress units are derived from these) |

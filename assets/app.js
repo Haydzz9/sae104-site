@@ -100,7 +100,7 @@
   function footer() {
     return `<footer class="site"><div class="wrap">
       <div>CSAE 104 Web Programming, College of Computer Science, DMMMSU-SLUC<br>Haydee D. Limson, MIS. 2nd Semester AY 2026-2027</div>
-      <div>Your progress is saved in this browser. <a href="progress.html">Share or export it</a> for your instructor. <a href="start.html">Getting started</a>. <a href="guide.html">How it works</a>. <a href="teacher.html">Instructor view</a>. <button type="button" id="resetBtn">Reset my progress</button></div>
+      <div>Your progress is saved in this browser. <a href="progress.html">Share or export it</a> for your instructor. <a href="start.html">Getting started</a>. <a href="guide.html">How it works</a>. <button type="button" id="resetBtn">Reset my progress</button></div>
     </div></footer>
     <dialog class="search" id="searchDlg" aria-label="Search"><input id="searchIn" type="search" placeholder="Search lectures and labs, for example: middleware" autocomplete="off"><ul id="searchOut"></ul></dialog>`;
   }
@@ -519,7 +519,7 @@
 
   /* ---------- registration gate: every student appears in the instructor's sheet ---------- */
   const ID_RE = /^[A-Za-z0-9][A-Za-z0-9 -]{2,29}$/;
-  function needsGate(page) { return syncOn() && page !== "progress" && page !== "teacher" && page !== "guide" && page !== "start" && !store.get("locked", false) && !store.get("guest", false); }
+  function needsGate(page) { return syncOn() && page !== "progress" && page !== "guide" && page !== "start" && !store.get("locked", false) && !store.get("guest", false); }
   function showGate() {
     if ($("#gateDlg")) return;
     const s = getStudent();
@@ -763,7 +763,7 @@
     $("#prn").addEventListener("click", () => { save(); window.print(); });
   }
 
-  /* instructor view: load the files students submitted; everything stays in this browser */
+  /* CSV export of a progress summary (used by the student download) */
   const csvCell = (v) => { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   function csv(list) {
     const n = C.lecture.length;
@@ -775,56 +775,6 @@
       return r;
     }));
     return lines.map((r) => r.map(csvCell).join(",")).join("\r\n");
-  }
-  const validFile = (d) => d && d.app === "csae104-progress" && d.student && Array.isArray(d.weeks) && d.weeks.every((x) => Number.isFinite(x.lecture) && Number.isFinite(x.laboratory));
-  function teacherPage() {
-    return `<main id="main" class="wrap pg">
-      <section class="intro"><h1>Class progress</h1>
-      <p>Open the progress files your students submitted. The files are read in this browser only and are not uploaded anywhere. If a student submits twice, the newest file is used.</p></section>
-      <div class="card tctl">
-        <label class="fbtn btn solid">Choose progress files<input id="tFiles" type="file" accept=".json,application/json" multiple hidden></label>
-        <label>Section<select id="tSec"><option value="">All</option>${SECTIONS.map((x) => `<option>${x}</option>`).join("")}</select></label>
-        <label>Current week<input id="tWeek" type="number" min="1" max="${C.lecture.length}" value="1"></label>
-        <label>Behind if below<input id="tThr" type="number" min="1" max="100" value="80"> %</label>
-        <button class="btn" type="button" id="tCsv" disabled>Download class CSV</button>
-      </div>
-      <p class="net-note" id="tMsg" role="status">No files loaded yet.</p>
-      <div class="tscroll"><table class="ttable" id="tTable" hidden><thead><tr><th>Name</th><th>Section</th><th>Lectures</th><th>Labs</th><th>Quiz avg</th><th>Weeks behind</th><th>Last active</th><th>Exported</th></tr></thead><tbody id="tBody"></tbody></table></div>
-    </main>`;
-  }
-  function wireTeacher() {
-    let people = new Map();
-    const render = () => {
-      const sec = $("#tSec").value, cur = Math.max(1, Math.min(C.lecture.length, +$("#tWeek").value || 1)), thr = +$("#tThr").value || 80;
-      const list = [...people.values()].filter((d) => !sec || d.student.section === sec).sort((a, b) => (a.student.section + a.student.name).localeCompare(b.student.section + b.student.name));
-      $("#tTable").hidden = !list.length; $("#tCsv").disabled = !list.length;
-      $("#tBody").innerHTML = list.map((d) => {
-        const behind = d.weeks.filter((x) => x.week <= cur && (x.lecture < thr || x.laboratory < thr)).map((x) => x.week);
-        const la = d.lastActive ? new Date(d.lastActive).toLocaleDateString() : "-";
-        return `<tr class="${behind.length ? "late" : ""}"><td>${esc(d.student.name)}${d.student.id ? `<small>${esc(d.student.id)}</small>` : ""}</td><td>${esc(d.student.section)}</td><td>${bar(avg(d.weeks.map((x) => x.lecture)))}</td><td>${bar(avg(d.weeks.map((x) => x.laboratory)))}</td><td>${quizAvg(d.weeks)}%</td><td>${behind.length ? `<b>${behind.length}</b> <small>(${behind.map((x) => "W" + x).join(", ")})</small>` : "On track"}</td><td>${la}</td><td>${new Date(d.exportedAt).toLocaleDateString()}</td></tr>`;
-      }).join("");
-      if (people.size) $("#tMsg").textContent = `${list.length} of ${people.size} students shown. "Behind" means a lecture or lab below ${thr}% in any week up to Week ${cur}.`;
-    };
-    $("#tFiles").addEventListener("change", async (e) => {
-      let bad = 0;
-      for (const f of e.target.files) {
-        try {
-          const d = JSON.parse(await f.text());
-          if (!validFile(d)) { bad++; continue; }
-          const key = (d.student.name || "").toLowerCase().trim() + "|" + (d.student.id || "");
-          const old = people.get(key);
-          if (!old || old.exportedAt < d.exportedAt) people.set(key, d);
-        } catch (err) { bad++; }
-      }
-      render();
-      if (bad) $("#tMsg").textContent += ` ${bad} file(s) were skipped because they are not valid CSAE 104 progress files.`;
-      e.target.value = "";
-    });
-    ["tSec", "tWeek", "tThr"].forEach((id) => $("#" + id).addEventListener("input", render));
-    $("#tCsv").addEventListener("click", () => {
-      const sec = $("#tSec").value;
-      download(`csae104-class-progress-${new Date().toISOString().slice(0, 10)}.csv`, csv([...people.values()].filter((d) => !sec || d.student.section === sec)), "text/csv");
-    });
   }
 
   /* ---------- student guide page ---------- */
@@ -891,7 +841,6 @@
     else if (page === "progress") { html = progressPage(); title = "My progress | CSAE 104"; kind = "progress"; document.body.dataset.kind = kind; }
     else if (page === "guide") { html = guidePage(); title = "How it works | CSAE 104"; kind = "progress"; document.body.dataset.kind = kind; }
     else if (page === "start") { html = startPage(); title = "Getting started | CSAE 104"; kind = "progress"; document.body.dataset.kind = kind; }
-    else if (page === "teacher") { html = teacherPage(); title = "Class progress | CSAE 104"; kind = "teacher"; document.body.dataset.kind = kind; }
     else html = home();
     document.title = title;
     $("#app").innerHTML = header(kind) + html + footer();
@@ -899,7 +848,6 @@
     if (needsGate(page)) showGate();
     scheduleSync();
     if (page === "progress") wireProgress();
-    if (page === "teacher") wireTeacher();
     if (page === "week") wireWeek(kind, parseInt(q.get("w"), 10) || 1);
   }
   boot();

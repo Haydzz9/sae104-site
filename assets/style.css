@@ -321,7 +321,7 @@ dialog.search::backdrop{background:rgba(8,14,26,.55)}
 @media print{.rv{display:none}}
 
 /* ---------- progress and instructor pages ---------- */
-body[data-kind="progress"],body[data-kind="teacher"]{--accent:var(--lab);--accent-ink:var(--lab-ink);--accent-tint:var(--lab-tint)}
+body[data-kind="progress"]{--accent:var(--lab);--accent-ink:var(--lab-ink);--accent-tint:var(--lab-tint)}
 .pg .intro{padding:2.4rem 0 1rem}.pg .intro h1{font-size:clamp(2rem,4.5vw,3rem)}.pg .intro p{max-width:62ch;color:var(--muted)}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:1rem 1.2rem}
 .sform,.tctl{display:flex;flex-wrap:wrap;gap:1rem 1.2rem;align-items:flex-end;margin:1rem 0}

@@ -10,11 +10,8 @@ Every week page also has a "Where this fits in the syllabus" panel taken from Pa
 - **Specification:** [docs/SYSTEM-SPECIFICATION.md](docs/SYSTEM-SPECIFICATION.md) (architecture, data, rules, interface, security)
 
 ## Monitoring student progress
-Progress is saved in each student's browser, so the site collects nothing by itself.
-1. Students open **My progress** (`progress.html`), enter their name and section, and click **Download my progress file**. They submit the `.json` file on Google Classroom.
-2. You open **Instructor view** (`teacher.html`, linked in the footer), choose all the submitted files, and see each student's lecture, lab and quiz progress, who is behind, and a class CSV you can download.
-For live tracking without files, see `instructor/google-sheet-setup.md`: a Google Sheet that fills itself while students study (students must opt in on the My progress page).
-Files are read in your browser only and are never uploaded. A file can be edited by a student, so treat it as self-reported progress.
+Progress is saved in each student's browser and sent automatically to a Google Sheet that only the instructor opens: one row per student, with progress, submitted GitHub links, scores and flags for students who are behind, inactive or not registered. Students register once and can see their own scores on the site.
+Setup and day-to-day use are in [docs/INSTRUCTOR-GUIDE.md](docs/INSTRUCTOR-GUIDE.md); the short technical setup is `instructor/google-sheet-setup.md`.
 
 ## Publish on GitHub Pages
 1. Create a repository and upload everything in this folder (keep the folder structure).
