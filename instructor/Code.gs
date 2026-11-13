@@ -33,7 +33,7 @@ function roster_() {
 }
 
 // ---------- work submissions (GitHub links) ----------
-const SUBS = "Submissions";
+const SUBS = "Submissions", NOTREG = "Not registered", INACTIVE = "Inactive";
 function subsSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName(SUBS);
@@ -184,6 +184,10 @@ function settings_() {
     st.getRange("A1:C2").setValues([["Current week", 1, "Change this each week"], ["Behind if below %", 80, "Lecture or lab under this counts as behind"]]);
     st.getRange("A1:A2").setFontWeight("bold"); st.setColumnWidth(1, 160); st.setColumnWidth(3, 320);
   }
+  if (!st.getRange("A3").getValue()) {
+    st.getRange("A3:C3").setValues([["Inactive after (days)", 7, "No sync for this many days counts as inactive"]]);
+    st.getRange("A3").setFontWeight("bold");
+  }
   return st;
 }
 
@@ -207,6 +211,36 @@ function setupHeaders_(sh) {
   sh.setColumnWidth(2, 220); sh.setColumnWidths(5, 2, 140);
 }
 
+// Roster students who have not registered yet (matched by name, which is taken from the Roster when a student registers).
+function notRegisteredSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(NOTREG);
+  if (!sh) {
+    sh = ss.insertSheet(NOTREG);
+    sh.getRange("A1:C1").setValues([["Name", "Section", "Student ID"]]).setFontWeight("bold").setBackground("#E8EDF3");
+    sh.getRange("E1:E3").setValues([["Roster size"], ["Registered"], ["Not registered"]]).setFontWeight("bold");
+    sh.setColumnWidth(1, 240); sh.setColumnWidth(5, 130);
+  }
+  sh.getRange("A2").setFormula('=IF(COUNTA(Roster!A2:A)=0, "Add your students to the Roster tab first", IFERROR(FILTER(Roster!A2:C, Roster!A2:A<>"", COUNTIF(Progress!B2:B, Roster!A2:A)=0), "Everyone on the Roster has registered"))');
+  sh.getRange("F1").setFormula('=COUNTA(Roster!A2:A)');
+  sh.getRange("F2").setFormula('=SUMPRODUCT((Roster!A2:A<>"")*(COUNTIF(Progress!B2:B, Roster!A2:A)>0))');
+  sh.getRange("F3").setFormula('=F1-F2');
+  return sh;
+}
+
+// Registered students with no sync for "Inactive after (days)" days (Settings sheet).
+function inactiveSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(INACTIVE);
+  if (!sh) {
+    sh = ss.insertSheet(INACTIVE);
+    sh.getRange("A1:E1").setValues([["Name", "Section", "Student ID", "Last sync", "Days inactive"]]).setFontWeight("bold").setBackground("#E8EDF3");
+    sh.getRange("D:D").setNumberFormat("yyyy-mm-dd hh:mm"); sh.setColumnWidth(1, 240); sh.setColumnWidth(4, 150);
+  }
+  sh.getRange("A2").setFormula('=IFERROR(ARRAYFORMULA(FILTER({Progress!B2:B, Progress!C2:C, Progress!D2:D, Progress!E2:E, ROUND(TODAY()-Progress!E2:E)}, Progress!B2:B<>"", TODAY()-Progress!E2:E>INDIRECT("Settings!$B$3"))), "No inactive students")');
+  return sh;
+}
+
 /** Rewrites the Weeks behind formula in every row. Run it if you ever see #REF! in that column. */
 function repairFormulas() {
   settings_();
@@ -227,8 +261,10 @@ function setup() {
   subsSheet_();
   let sh = ss.getSheetByName(DATA);
   if (!sh) { sh = ss.insertSheet(DATA); setupHeaders_(sh); }
+  notRegisteredSheet_(); inactiveSheet_();
   const red = SpreadsheetApp.newConditionalFormatRule().whenNumberLessThan(80).setBackground("#FADAD7").setRanges([sh.getRange(2, 7, 500, 2), sh.getRange(2, COL.lec, 500, 2 * WEEKS)]).build();
   const late = SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(0).setBackground("#FBEBCF").setBold(true).setRanges([sh.getRange(2, 10, 500, 1)]).build();
-  sh.setConditionalFormatRules([red, late]);
+  const idle = SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND($B2<>"", TODAY()-$E2>INDIRECT("Settings!$B$3"))').setBackground("#FADAD7").setRanges([sh.getRange(2, 2, 500, 1), sh.getRange(2, 5, 500, 1)]).build();
+  sh.setConditionalFormatRules([red, late, idle]);
   repairFormulas();
 }

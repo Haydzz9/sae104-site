@@ -504,6 +504,46 @@
   }
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && syncTimer) syncNow(); });
 
+  /* ---------- registration gate: every student appears in the instructor's sheet ---------- */
+  const ID_RE = /^[A-Za-z0-9][A-Za-z0-9 -]{2,29}$/;
+  function needsGate(page) { return syncOn() && page !== "progress" && page !== "teacher" && !store.get("locked", false) && !store.get("guest", false); }
+  function showGate() {
+    if ($("#gateDlg")) return;
+    const s = getStudent();
+    const d = document.createElement("dialog"); d.className = "gate"; d.id = "gateDlg"; d.setAttribute("aria-labelledby", "gateTitle");
+    d.innerHTML = `<form id="gateForm" autocomplete="off">
+      <h2 id="gateTitle">Register for CSAE 104</h2>
+      <p>Students of this course register once, so your instructor can see your progress and receive your lab work. It takes a minute.</p>
+      <label>Full name<input id="gName" required value="${esc(s.name)}" placeholder="Surname, Given name"></label>
+      <label>Section<select id="gSec" required><option value="">Choose</option>${SECTIONS.map((x) => `<option ${s.section === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+      <label>Student ID number<input id="gId" required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9 \\-]{2,29}" value="${esc(s.id)}" placeholder="Your student ID number"></label>
+      <label class="chk"><input type="checkbox" id="gOk" required><span>I agree that my name, section, student ID, reading and lab progress and quiz scores are sent to my instructor for this course. My notes are never sent. Once registered, my name and ID cannot be changed.</span></label>
+      <p class="small gmsg" id="gMsg" role="status"></p>
+      <div class="gbtns"><button class="btn solid" type="submit" id="gGo">Register</button>
+      <button class="btn" type="button" id="gGuest">I am not a student of this class</button></div>
+      <p class="small">Already registered on another device? <a href="progress.html#device">Restore from your backup</a>.</p>
+    </form>`;
+    document.body.appendChild(d);
+    d.addEventListener("cancel", (e) => e.preventDefault());
+    const msg = (t, bad) => { const m = $("#gMsg"); m.textContent = t; m.style.color = bad ? "var(--bad)" : ""; };
+    $("#gGuest").addEventListener("click", () => { store.set("guest", true); d.close(); d.remove(); });
+    $("#gateForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const v = { name: $("#gName").value.trim(), section: $("#gSec").value, id: $("#gId").value.trim() };
+      if (!v.name || !v.section || !ID_RE.test(v.id)) { msg(SYNC_MSG.id, true); return; }
+      if (!$("#gOk").checked) { msg("Please tick the box to agree.", true); return; }
+      $("#gGo").disabled = true; msg("Registering...");
+      store.set("student", v); store.set("consent", true); store.set("syncerr", null);
+      const r = await syncNow();
+      $("#gGo").disabled = false;
+      if (r.ok) { d.close(); d.remove(); return; }
+      store.set("consent", false);
+      msg(r.error === "network" ? "Could not reach the server. Check your internet and try again." : (SYNC_MSG[r.error] || "Could not register. Tell your instructor."), true);
+    });
+    try { d.showModal(); } catch (err) { d.setAttribute("open", ""); }
+    $("#gName").focus();
+  }
+
   /* ---------- submit work (GitHub links) ---------- */
   const SUB_ITEMS = () => {
     const labs = (C.laboratory || []).filter((w) => w.week <= 17 && w.week !== 9).map((w) => ({ id: "lab" + w.week, label: `Lab ${w.week}: ${w.title}` }));
@@ -758,6 +798,7 @@
     document.title = title;
     $("#app").innerHTML = header(kind) + html + footer();
     wireShell();
+    if (needsGate(page)) showGate();
     scheduleSync();
     if (page === "progress") wireProgress();
     if (page === "teacher") wireTeacher();
