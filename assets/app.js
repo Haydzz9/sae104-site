@@ -16,7 +16,7 @@
   const store = {
     get(k, d) { try { const v = localStorage.getItem("csae104:" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem("csae104:" + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter((k) => k.startsWith("csae104:") && !/:(theme|cid|student|locked|consent|syncerr|synced|subs)$/.test(k)).forEach((k) => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter((k) => k.startsWith("csae104:") && !/:(theme|cid|student|locked|consent|syncerr|synced|subs)$|:(quiz|qpick):/.test(k)).forEach((k) => localStorage.removeItem(k)); } catch (e) {} },
   };
 
   /* ---------- theme ---------- */
@@ -110,7 +110,7 @@
       applyTheme(t); store.set("theme", t);
     });
     $("#resetBtn").addEventListener("click", () => {
-      if (confirm("Clear your saved progress, quiz scores and notes on this device?")) { store.clear(); location.reload(); }
+      if (confirm("Clear your reading progress, lab steps and notes on this device? Quiz answers are kept, because each quiz can only be taken once.")) { store.clear(); location.reload(); }
     });
     wireSearch();
   }
@@ -313,39 +313,40 @@
       return `<div class="q" data-q="${qi}" data-ans="${q.answer}"><p class="q-t">${rich(q.q)}</p><ul class="opts">${order.map((oi, pos) => `<li><button type="button" class="opt" data-oi="${oi}"><span class="ltr">${"ABCD"[pos]}</span><span>${rich(q.options[oi])}</span></button></li>`).join("")}</ul><p class="fb" aria-live="polite"></p></div>`;
     }).join("");
     const best = store.get(`quiz:${t}:${w.week}`, null);
-    return `<section class="sec quiz-sec" id="quiz" data-sec><div class="quiz"><header><h2>Check your understanding</h2><span class="score" id="score">${mc ? (best ? `Best score: ${best.best}/${best.total}` : `${mc} multiple-choice questions`) : ""}</span></header>
+    return `<section class="sec quiz-sec" id="quiz" data-sec><div class="quiz"><header><h2>Check your understanding</h2><span class="score" id="score">${mc ? (best ? `Your score: ${best.best}/${best.total}` : `${mc} multiple-choice questions`) : ""}</span></header>
       ${items}
-      ${mc ? `<div class="qfoot"><button class="btn" type="button" id="retry">Try again with new order</button><p>The choices are shuffled each time, so the answer is never in the same place.</p></div>` : ""}</div></section>`;
+      ${mc ? `<div class="qfoot"><p>You can take this quiz only once. Your answers are saved and your first score is the one that counts.</p></div>` : ""}</div></section>`;
   }
   function wireQuiz(w, t) {
     const root = $("#quiz"); if (!root) return;
     const total = w.quiz.filter((q) => !q.open).length;
+    const pkey = `qpick:${t}:${w.week}`;
+    const picks = store.get(pkey, {});
     let right = 0, answered = 0;
-    root.addEventListener("click", (e) => {
-      const b = e.target.closest(".opt"); if (!b) return;
-      const q = b.closest(".q"), ans = +q.dataset.ans, pick = +b.dataset.oi;
+    const lock = (q, pick) => {
+      const ans = +q.dataset.ans;
       $$(".opt", q).forEach((o) => { o.disabled = true; if (+o.dataset.oi === ans) o.classList.add("right"); });
-      const fb = $(".fb", q);
-      if (pick === ans) { b.classList.add("right"); fb.textContent = "Correct."; fb.className = "fb ok"; right++; }
-      else { b.classList.add("wrong"); fb.textContent = "Not quite. The correct choice is highlighted in green."; fb.className = "fb no"; }
+      const fb = $(".fb", q), btn = $(`.opt[data-oi="${pick}"]`, q);
+      if (pick === ans) { if (btn) btn.classList.add("right"); fb.textContent = "Correct."; fb.className = "fb ok"; right++; }
+      else { if (btn) btn.classList.add("wrong"); fb.textContent = "Not quite. The correct choice is highlighted in green."; fb.className = "fb no"; }
       answered++;
-      $("#score").textContent = `Score: ${right}/${answered} of ${total}`;
-      if (answered === total) {
-        const best = store.get(`quiz:${t}:${w.week}`, null);
-        store.set("active", new Date().toISOString()); scheduleSync();
-        if (!best || right > best.best) store.set(`quiz:${t}:${w.week}`, { best: right, total });
-        $("#score").textContent = `Final score: ${right}/${total}`;
-      }
+    };
+    const finish = () => {
+      if (answered < total) { $("#score").textContent = `Score: ${right}/${answered} of ${total}`; return; }
+      if (!store.get(`quiz:${t}:${w.week}`, null)) store.set(`quiz:${t}:${w.week}`, { best: right, total });
+      store.set("active", new Date().toISOString()); scheduleSync();
+      $("#score").textContent = `Final score: ${right}/${total}`;
+    };
+    // answers given earlier stay locked, so reloading the page cannot reset the quiz
+    $$(".q[data-q]", root).forEach((q) => { if (picks[q.dataset.q] !== undefined) lock(q, +picks[q.dataset.q]); });
+    if (answered) finish();
+    root.addEventListener("click", (e) => {
+      const btn = e.target.closest(".opt"); if (!btn || btn.disabled) return;
+      const q = btn.closest(".q"); lock(q, +btn.dataset.oi);
+      picks[q.dataset.q] = +btn.dataset.oi; store.set(pkey, picks);
+      finish();
     });
     root.addEventListener("input", (e) => { if (e.target.dataset.note !== undefined) store.set(`note:${t}:${w.week}:${e.target.dataset.note}`, e.target.value); });
-    const retry = $("#retry");
-    if (retry) retry.addEventListener("click", () => {
-      right = answered = 0;
-      const tmp = document.createElement("div"); tmp.innerHTML = quizHTML(w, t);
-      $$(".q[data-q]", root).forEach((q) => { const n = $(`.q[data-q="${q.dataset.q}"]`, tmp); q.replaceWith(n); });
-      $("#score").textContent = `${total} multiple-choice questions`;
-      $(".q[data-q]", root).scrollIntoView({ block: "center" });
-    });
   }
 
   function weekPage(t, n) {
@@ -559,7 +560,7 @@
   }
 
   /* ---------- move progress to another device ---------- */
-  const BACKUP_KEY = /^(prog:|quiz:|note:)/;
+  const BACKUP_KEY = /^(prog:|quiz:|qpick:|note:)/;
   const BACKUP_ONE = new Set(["student", "cid", "locked", "consent", "subs", "synced", "active"]);
   function makeBackup() {
     const data = {};
@@ -576,7 +577,9 @@
         const cur = store.get(k, { seen: [], done: [] });
         store.set(k, { seen: [...new Set([...cur.seen, ...v.seen.map(String)])], done: [...new Set([...cur.done, ...v.done.map(String)])] }); n++;
       } else if (k.startsWith("quiz:") && v && Number.isFinite(v.best) && Number.isFinite(v.total)) {
-        const cur = store.get(k, null); if (!cur || v.best > cur.best) store.set(k, { best: v.best, total: v.total }); n++;
+        if (!store.get(k, null)) store.set(k, { best: v.best, total: v.total }); n++;
+      } else if (k.startsWith("qpick:") && v && typeof v === "object") {
+        store.set(k, Object.assign({}, v, store.get(k, {}))); n++;
       } else if (k.startsWith("note:") && typeof v === "string") { if (!store.get(k, "")) store.set(k, v); n++; }
       else if (k === "subs" && v && typeof v === "object") store.set(k, Object.assign({}, v, store.get("subs", {})));
       else if (k === "student" && v && typeof v === "object") store.set(k, { name: String(v.name || ""), section: String(v.section || ""), id: String(v.id || "") });

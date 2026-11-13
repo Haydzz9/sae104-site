@@ -133,7 +133,6 @@ function doPost(e) {
       lec.push(num_(x.lecture)); lab.push(num_(x.laboratory));
       quiz.push(x.quiz && x.quiz.total ? Math.max(0, Math.min(+x.quiz.total, +x.quiz.best || 0)) + "/" + (+x.quiz.total) : "");
     }
-    const qp = quiz.filter(String).map(function (q) { const a = q.split("/"); return Math.round((a[0] / a[1]) * 100); });
     const key = who.key;
 
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
@@ -155,6 +154,9 @@ function doPost(e) {
       if (row) { const owner = String(sh.getRange(row, COL.cid).getValue() || ""); if (owner && owner !== cid) return out_({ ok: false, error: "claimed" }); }
 
       const isNew = !row; if (isNew) row = last + 1;
+      // each quiz counts once: a score already on the sheet is never replaced
+      if (!isNew) { const oldQ = sh.getRange(row, COL.quiz, 1, WEEKS).getValues()[0]; for (let i = 0; i < WEEKS; i++) if (oldQ[i]) quiz[i] = String(oldQ[i]); }
+      const qp = quiz.filter(String).map(function (q) { const a = q.split("/"); return Math.round((a[0] / a[1]) * 100); });
       sh.getRange(row, 1, 1, 9).setValues([[key, safe_(name), section, safe_(id), new Date(), d.lastActive ? new Date(d.lastActive) : "", avg_(lec), avg_(lab), avg_(qp)]]);
       sh.getRange(row, COL.lec, 1, WEEKS).setValues([lec]);
       sh.getRange(row, COL.lab, 1, WEEKS).setValues([lab]);

@@ -66,3 +66,6 @@ After changing the script, always use **Deploy > Manage deployments > Edit > New
 
 ## Students who change device
 Progress is saved in each browser. A student who gets a new phone or computer can use **My progress > Use another device**: download a backup on the old device, then **Restore from backup** on the new one. The backup carries their device ID, so the sheet recognises the new device without you unlocking anything. If a student lost the old device with no backup, clear their **Device ID** cell in the Progress sheet; their progress restarts on the new device from zero, and their next sync claims the row again.
+
+## Quizzes are taken once
+Each quiz can only be taken once. Answers lock as soon as a student picks one, they stay locked after a reload, and "Reset my progress" does not clear them. In the Google Sheet, a quiz score that is already there is never replaced, so the first score counts. To let a student retake a quiz, clear that week's quiz cell in the Progress sheet and ask them to clear their site data for the site (or use a different browser).
