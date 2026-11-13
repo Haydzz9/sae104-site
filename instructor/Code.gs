@@ -44,9 +44,40 @@ function subsSheet_() {
     sh.getRange("I:J").setNumberFormat("yyyy-mm-dd hh:mm");
     sh.setColumnWidth(2, 200); sh.setColumnWidth(5, 320); sh.setColumnWidth(7, 240); sh.setColumnWidth(8, 220);
   }
+  // grading columns, filled in by the instructor: students only see a score when Released is ticked
+  sh.getRange("L1:O1").setValues([["Score", "Out of", "Feedback", "Released"]]).setFontWeight("bold").setBackground("#DAF1EC");
+  sh.setColumnWidth(14, 280);
   return sh;
 }
 function link_(u) { return u ? '=HYPERLINK("' + u + '","' + u + '")' : ""; }
+
+// A student reads only their own released scores. The device must be the one that registered the ID.
+function handleScores_(p) {
+  const d = p.data || {};
+  const cid = str_(d.clientId, 64);
+  if (cid.length < 12) return out_({ ok: false, error: "client" });
+  const who = resolve_(str_(d.name), "", d.id);
+  if (who.error) return out_({ ok: false, error: who.error });
+  const key = who.key;
+  const pg = sheet_(), plast = pg.getLastRow();
+  let registered = false;
+  if (plast > 1) {
+    const rows = pg.getRange(2, 1, plast - 1, COL.cid).getValues();
+    for (let i = 0; i < rows.length; i++) if (rows[i][0] === key) { registered = String(rows[i][COL.cid - 1] || "") === cid; break; }
+  }
+  if (!registered) return out_({ ok: false, error: "unregistered" });
+  const sh = subsSheet_(), last = sh.getLastRow(), items = [];
+  if (last > 1) {
+    sh.getRange(2, 1, last - 1, 15).getValues().forEach(function (r) {
+      const score = Number(r[11]);
+      if (r[0] === key && r[14] === true && r[11] !== "" && isFinite(score)) {
+        const max = r[12] === "" ? null : Number(r[12]);
+        items.push({ item: String(r[3]), score: score, max: isFinite(max) ? max : null, feedback: str_(r[13], 500) });
+      }
+    });
+  }
+  return out_({ ok: true, items: items });
+}
 
 function handleSubmission_(p) {
   const d = p.data || {};
@@ -118,6 +149,7 @@ function doPost(e) {
     const p = JSON.parse(e.postData.contents);
     if (p.key !== SECRET) return out_({ ok: false, error: "key" });
     if (p.type === "submission") return handleSubmission_(p);
+    if (p.type === "scores") return handleScores_(p);
     const d = p.data;
     if (!d || d.app !== "csae104-progress" || !d.student || !Array.isArray(d.weeks)) return out_({ ok: false, error: "format" });
     const cid = str_(d.clientId, 64);
@@ -258,7 +290,8 @@ function setup() {
     r.getRange("A1:C1").setValues([["Name", "Section", "Student ID"]]).setFontWeight("bold").setBackground("#E8EDF3");
     r.getRange("E1").setValue("Optional. List your students here (Name, Section 3B/3E/3F/3G, Student ID). When this sheet has names, only these names can sync. Leave it empty to accept any name.");
   }
-  subsSheet_();
+  const subs = subsSheet_();
+  subs.getRange("O2:O1000").insertCheckboxes();
   let sh = ss.getSheetByName(DATA);
   if (!sh) { sh = ss.insertSheet(DATA); setupHeaders_(sh); }
   notRegisteredSheet_(); inactiveSheet_();

@@ -75,3 +75,19 @@ Each quiz can only be taken once. Answers lock as soon as a student picks one, t
 - **Not registered tab.** Lists the students on your Roster who have no row in the Progress sheet yet, with counts of roster size, registered and not registered. It only works if the Roster tab is filled in (Name, Section, Student ID). Students are matched by name, which the script takes from your Roster when they register.
 - **Inactive tab and highlight.** Students whose last sync is older than **Inactive after (days)** on the Settings tab (default 7) are listed, with how many days it has been. In the Progress tab, their name and Updated cell turn red.
 - After updating the script, run **setup** once to create the new tabs, then redeploy with **Deploy > Manage deployments > Edit > New version > Deploy**.
+
+## Giving scores for submitted work
+Grade in the **Submissions** tab. Four columns at the right are yours to fill in:
+
+| Column | What to enter |
+|---|---|
+| **Score** | The mark, for example 85 |
+| **Out of** | The maximum, for example 100 (optional) |
+| **Feedback** | A short comment for the student (optional) |
+| **Released** | Tick the checkbox when the student may see it |
+
+- A student sees a score on **My progress > My scores** only when **Released** is ticked and a score is entered. Grade everything first, then tick Released for the whole class at once, or one student at a time.
+- Students see only their own scores. The sheet checks that the request comes from the device that registered that student ID, so one student cannot read another student's marks.
+- Students see the score as a number, a percentage (when Out of is filled in) and your feedback. Changing a score later updates it the next time they open the page or press **Refresh my scores**.
+- Quiz scores are shown to students automatically when they finish a quiz. This table is for graded work such as labs, project checkpoints and the final project.
+- After updating the script, run **setup** once. It adds the four columns and the checkboxes. Then redeploy with **Deploy > Manage deployments > Edit > New version > Deploy**.

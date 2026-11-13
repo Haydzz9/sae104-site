@@ -653,6 +653,36 @@
     });
   }
 
+  /* ---------- my scores (released by the instructor) ---------- */
+  function scoresCard() {
+    if (!syncOn()) return "";
+    return `<section class="card" id="scores"><h2>My scores</h2>
+      <p class="small" id="scState">Loading...</p><div id="scList"></div>
+      <div class="pactions"><button class="btn" type="button" id="scRefresh">Refresh my scores</button></div></section>`;
+  }
+  function drawScores(items, at) {
+    const labels = Object.fromEntries(SUB_ITEMS().map((i) => [i.id, i.label]));
+    const order = SUB_ITEMS().map((i) => i.id);
+    items = items.slice().sort((a, b) => order.indexOf(a.item) - order.indexOf(b.item));
+    $("#scState").textContent = items.length ? `Updated ${new Date(at).toLocaleString()}` : "No scores have been released yet. Your instructor posts them after checking your work.";
+    $("#scList").innerHTML = items.length ? `<div class="tscroll"><table class="ttable"><thead><tr><th>Work</th><th>Score</th><th>Feedback</th></tr></thead><tbody>${items.map((i) => {
+      const pct = i.max ? Math.round((i.score / i.max) * 100) : null;
+      return `<tr><td>${esc(labels[i.item] || i.item)}</td><td><b>${esc(i.score)}${i.max ? " / " + esc(i.max) : ""}</b>${pct !== null ? ` <small>${pct}%</small>` : ""}</td><td>${esc(i.feedback || "")}</td></tr>`;
+    }).join("")}</tbody></table></div>` : "";
+  }
+  async function loadScores() {
+    const st = $("#scState"); if (!st) return;
+    const cached = store.get("scores", null); if (cached) drawScores(cached.items, cached.at);
+    if (!store.get("locked", false)) { if (!cached) st.textContent = "Register and share your progress first. Your scores appear here after your instructor releases them."; return; }
+    const s = getStudent();
+    st.textContent = cached ? st.textContent + " (checking for updates...)" : "Loading...";
+    try {
+      const res = await (await fetch(CFG.endpoint, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ key: CFG.key || "", type: "scores", data: { clientId: deviceId(), name: s.name, id: s.id } }) })).json();
+      if (res && res.ok) { const at = new Date().toISOString(); store.set("scores", { items: res.items, at }); drawScores(res.items, at); }
+      else st.textContent = (res && SYNC_MSG[res.error]) || (res && res.error === "unregistered" ? "Share your progress first, then your scores can load." : "Could not load your scores. Try again later.");
+    } catch (e) { st.textContent = cached ? "Could not reach the server. Showing the scores saved on this device." : "Could not reach the server. Check your internet and try again."; }
+  }
+
   function progressPage() {
     const s = getStudent(), snap = snapshot(), lk = syncOn() && store.get("locked", false);
     const rows = snap.weeks.map((x) => {
@@ -676,6 +706,7 @@
         <div class="card"><b id="sumQ">${quizAvg(snap.weeks)}%</b><span>Average best quiz score</span></div>
       </div>
       <div class="net"><div class="net-head prow"><span>Week</span><span>Lecture</span><span>Laboratory</span><span>Quiz</span></div>${rows}</div>
+      ${scoresCard()}
       ${submitCard()}
       ${deviceCard()}
       <div class="pactions">
@@ -699,6 +730,7 @@
     $("#dlJson").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.json`, JSON.stringify(d, null, 2), "application/json"); });
     $("#dlCsv").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.csv`, csv([d]), "text/csv"); });
     wireSubmit();
+    if (syncOn()) { loadScores(); $("#scRefresh").addEventListener("click", loadScores); }
     wireDevice();
     if (syncOn()) {
       const st = () => { const t = store.get("synced", null), on = store.get("consent", false), er = store.get("syncerr", null); $("#syncState").textContent = !on ? "Sharing is off." : er ? SYNC_MSG[er] : t ? "Last sent: " + new Date(t).toLocaleString() : "Sharing is on. Your progress is sent automatically while you study."; };
