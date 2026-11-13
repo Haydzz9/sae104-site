@@ -59,7 +59,7 @@ function doPost(e) {
 function colLetter_(n) { let s = ""; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
 function behindFormula_(r) {
   const l1 = colLetter_(COL.lec), l2 = colLetter_(COL.lec + WEEKS - 1), b1 = colLetter_(COL.lab), b2 = colLetter_(COL.lab + WEEKS - 1);
-  return "=SUMPRODUCT((COLUMN(" + l1 + r + ":" + l2 + r + ")-COLUMN(" + l1 + r + ")+1<=Settings!$B$1)*(((" + l1 + r + ":" + l2 + r + "<Settings!$B$2)+(" + b1 + r + ":" + b2 + r + "<Settings!$B$2))>0))";
+  return "=SUMPRODUCT((COLUMN(" + l1 + r + ":" + l2 + r + ")-COLUMN(" + l1 + r + ")+1<=INDIRECT(\"Settings!$B$1\"))*(((" + l1 + r + ":" + l2 + r + "<INDIRECT(\"Settings!$B$2\"))+(" + b1 + r + ":" + b2 + r + "<INDIRECT(\"Settings!$B$2\")))>0))";
 }
 
 function settings_() {
