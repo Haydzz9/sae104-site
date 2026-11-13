@@ -1,6 +1,6 @@
 # CSAE 104 course site: student guide
 
-How to register, how your progress is counted, how to submit your work and how to see your scores. The same guide is on the site under **How it works**.
+How to register, how your progress is counted, how to submit your work and how to see your scores. The same guide is on the site under **How it works**. New to the site or to Git? The site also has a **Getting started** page with a weekly routine, how to use the lecture and lab pages, and a step-by-step Git and GitHub guide.
 
 ## In short
 

@@ -5,7 +5,7 @@ Lecture and laboratory are separate sections. Every week links to a `.pptx` deck
 Every week page also has a "Where this fits in the syllabus" panel taken from Part III of the syllabus.
 
 ## Documentation
-- **Students:** [docs/STUDENT-GUIDE.md](docs/STUDENT-GUIDE.md) (also on the site: How it works, `guide.html`)
+- **Students:** [docs/STUDENT-GUIDE.md](docs/STUDENT-GUIDE.md) (also on the site: How it works, `guide.html`, and a Getting started page with a weekly routine and a Git and GitHub walkthrough, `start.html`)
 - **Instructor:** [docs/INSTRUCTOR-GUIDE.md](docs/INSTRUCTOR-GUIDE.md) (setup, weekly routine, grading, troubleshooting)
 - **Specification:** [docs/SYSTEM-SPECIFICATION.md](docs/SYSTEM-SPECIFICATION.md) (architecture, data, rules, interface, security)
 
