@@ -149,7 +149,7 @@ Registered students whose last sync is older than the Settings value, with the d
 - The first device to register a student ID owns that row.
 - Another device cannot send data for that ID (`claimed`).
 - A device that has registered one student cannot register or send as another (`identity`).
-- After the first successful sync, the name, section and ID fields are read-only in the browser.
+- After the first successful sync, the name, section and ID fields are read-only in the browser. If an account is locked but has no valid ID (created before the ID became required), the fields unlock so the student can add it.
 - To move to a new device, the student restores a **backup**, which carries the device ID. If the old device is lost, the instructor clears the **Device ID** cell (column BN).
 
 ### 7.3 Progress calculation
