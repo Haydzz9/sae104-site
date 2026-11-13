@@ -100,7 +100,7 @@
   function footer() {
     return `<footer class="site"><div class="wrap">
       <div>CSAE 104 Web Programming, College of Computer Science, DMMMSU-SLUC<br>Haydee D. Limson, MIS. 2nd Semester AY 2026-2027</div>
-      <div>Your progress is saved in this browser. <a href="progress.html">Share or export it</a> for your instructor. <a href="teacher.html">Instructor view</a>. <button type="button" id="resetBtn">Reset my progress</button></div>
+      <div>Your progress is saved in this browser. <a href="progress.html">Share or export it</a> for your instructor. <a href="guide.html">How it works</a>. <a href="teacher.html">Instructor view</a>. <button type="button" id="resetBtn">Reset my progress</button></div>
     </div></footer>
     <dialog class="search" id="searchDlg" aria-label="Search"><input id="searchIn" type="search" placeholder="Search lectures and labs, for example: middleware" autocomplete="off"><ul id="searchOut"></ul></dialog>`;
   }
@@ -506,7 +506,7 @@
 
   /* ---------- registration gate: every student appears in the instructor's sheet ---------- */
   const ID_RE = /^[A-Za-z0-9][A-Za-z0-9 -]{2,29}$/;
-  function needsGate(page) { return syncOn() && page !== "progress" && page !== "teacher" && !store.get("locked", false) && !store.get("guest", false); }
+  function needsGate(page) { return syncOn() && page !== "progress" && page !== "teacher" && page !== "guide" && !store.get("locked", false) && !store.get("guest", false); }
   function showGate() {
     if ($("#gateDlg")) return;
     const s = getStudent();
@@ -811,6 +811,27 @@
     });
   }
 
+  /* ---------- student guide page ---------- */
+  function guidePage() {
+    const sec = (id, h, body) => `<section class="card gsec" id="${id}"><h2>${h}</h2>${body}</section>`;
+    const ol = (a) => `<ol>${a.map((x) => `<li>${x}</li>`).join("")}</ol>`;
+    const ul = (a) => `<ul>${a.map((x) => `<li>${x}</li>`).join("")}</ul>`;
+    const tbl = (head, rows) => `<div class="tscroll"><table class="ttable"><thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+    return `<main id="main" class="wrap pg">
+      <section class="intro"><h1>How it works</h1>
+      <p>How to register, how your progress is counted, how to submit your lab work and how to see your scores.</p></section>
+      <nav class="card gtoc" aria-label="In this guide"><b>In this guide:</b> <a href="#register">Register</a> · <a href="#tracked">What is tracked</a> · <a href="#quizzes">Quizzes</a> · <a href="#submit-work">Submit your work</a> · <a href="#scores">Your scores</a> · <a href="#device">Another device</a> · <a href="#messages">Messages</a> · <a href="#privacy">Privacy</a></nav>
+      ${sec("register", "1. Register once", ol(["On your first visit, a <b>Register for CSAE 104</b> form appears.", "Enter your <b>full name</b>, choose your <b>section</b> (3B, 3E, 3F or 3G) and enter your <b>student ID number</b>.", "Tick the box to agree that your progress is sent to your instructor, then click <b>Register</b>."]) + ul(["Use your real student ID. Your instructor has a class list, and your ID must be on it.", "After you register, your name, section and ID are <b>locked</b>. If something is wrong, ask your instructor.", "Not a student of this class? Click <b>I am not a student of this class</b>. Nothing is sent."]))}
+      ${sec("tracked", "2. What the site tracks", tbl(["What", "How it counts"], [["<b>Lectures</b>", "A week fills up as you scroll through its sections. Read the whole week to reach 100%."], ["<b>Labs</b>", "Tick every step and every item on the &quot;You are done when&quot; checklist."], ["<b>Quizzes</b>", "Your score is recorded when you answer all the multiple-choice questions."]]) + "<p>Your progress is saved on your device and sent to your instructor automatically a few seconds after you make progress. Your <b>notes</b> and typed answers stay on your device and are never sent.</p>")}
+      ${sec("quizzes", "3. Quizzes: one attempt only", ul(["Each quiz can be taken <b>once</b>. An answer locks as soon as you pick it.", "Answers stay locked after you reload the page, and &quot;Reset my progress&quot; does not clear them.", "Your first score is the one your instructor sees."]))}
+      ${sec("submit-work", "4. Submit your lab work", "<p>Your work lives in <b>one GitHub repository for the whole semester</b>, named <code>csae104-notices-board</code>, with a folder for each lab. You create it in Lab 1 and connect it to GitHub in Lab 5.</p><h3>After each lab</h3><pre><code>git add .\ngit commit -m &quot;Finish Lab 6&quot;\ngit push</code></pre><h3>For project checkpoints (Weeks 6, 8, 11, 16 and 17)</h3><pre><code>git tag checkpoint-1\ngit push --tags</code></pre><p>Use <code>checkpoint-2</code>, <code>checkpoint-3</code> and so on for the later ones.</p><h3>Then submit the link</h3>" + ol(["Open <a href=\"progress.html#submit\">My progress</a> and find <b>Submit my work</b>.", "Choose what you are submitting, paste your repository link, and add the tag or folder. For Weeks 15 and 17 add your deployed site address.", "Click <b>Submit</b>. You can submit again to replace your link; your first submission time is kept."]) + ul(["If your repository is private, add the GitHub account shown on the page as a collaborator.", "You must be registered, and you must submit from the device you registered on.", "Only <code>https://github.com/...</code> links are accepted."]))}
+      ${sec("scores", "5. See your scores", "<p>When your instructor has checked your work and released the scores, they appear under <a href=\"progress.html#scores\">My progress &rarr; My scores</a> with your score and any feedback. Press <b>Refresh my scores</b> to check for new ones. You see only your own scores.</p>")}
+      ${sec("device", "6. Use another device", ol(["On the old device, open My progress, find <b>Use another device</b>, and click <b>Download backup</b>.", "Send the file to yourself (email, Drive or USB).", "On the new device, open My progress and click <b>Restore from backup</b>."]) + "<p>Restoring adds to what is already there and never removes anything. Keep the file private. Lost your old device with no backup? Ask your instructor to unlock your account.</p>")}
+      ${sec("messages", "7. If you see a message", tbl(["Message", "What to do"], [["Your name or student ID is not in the class list", "Check your student ID number. If it is right, tell your instructor."], ["This name is already registered on another device", "Restore your backup on this device, or ask your instructor to unlock you."], ["This device is registered under a different name", "Ask your instructor."], ["Share your progress first", "Register first (step 1), then try again."], ["Could not reach the server", "Check your internet connection and try again. Your progress is still saved on your device."], ["Use your GitHub link", "The link must start with https://github.com/"]]))}
+      ${sec("privacy", "8. Your privacy", ul(["Your instructor receives your <b>name, section, student ID, lecture and lab progress, quiz scores, the GitHub links you submit, and the scores they give you</b>.", "Your instructor does <b>not</b> receive your notes, your typed answers, your quiz answers (only the score) or your code.", "You can switch off sharing on the My progress page, but then your instructor cannot see your progress."]))}
+    </main>`;
+  }
+
   /* ---------- boot ---------- */
   function boot() {
     initTheme();
@@ -825,6 +846,7 @@
       html = weekPage(kind, n);
     } else if (page === "list") { html = list(kind); title = `${KINDS[kind].label} | CSAE 104 Web Programming`; }
     else if (page === "progress") { html = progressPage(); title = "My progress | CSAE 104"; kind = "progress"; document.body.dataset.kind = kind; }
+    else if (page === "guide") { html = guidePage(); title = "How it works | CSAE 104"; kind = "progress"; document.body.dataset.kind = kind; }
     else if (page === "teacher") { html = teacherPage(); title = "Class progress | CSAE 104"; kind = "teacher"; document.body.dataset.kind = kind; }
     else html = home();
     document.title = title;
