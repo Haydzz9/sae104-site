@@ -349,3 +349,5 @@ body[data-kind="progress"],body[data-kind="teacher"]{--accent:var(--lab);--accen
 .pg .net-note{margin:.9rem 0 2.5rem;max-width:75ch;line-height:1.55}
 .pg .pactions{margin:1.2rem 0 0}
 .pg .tctl+.net-note{margin-top:.2rem}
+.lockmsg{margin:-.4rem 0 1rem}
+.sform input[readonly],.sform select:disabled{opacity:.75;cursor:not-allowed;background:var(--soft)}

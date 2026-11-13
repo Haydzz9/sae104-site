@@ -16,7 +16,7 @@
   const store = {
     get(k, d) { try { const v = localStorage.getItem("csae104:" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem("csae104:" + k, JSON.stringify(v)); } catch (e) {} },
-    clear() { try { Object.keys(localStorage).filter((k) => k.startsWith("csae104:") && !k.endsWith(":theme")).forEach((k) => localStorage.removeItem(k)); } catch (e) {} },
+    clear() { try { Object.keys(localStorage).filter((k) => k.startsWith("csae104:") && !/:(theme|cid|student|locked|consent|syncerr|synced)$/.test(k)).forEach((k) => localStorage.removeItem(k)); } catch (e) {} },
   };
 
   /* ---------- theme ---------- */
@@ -466,20 +466,44 @@
   /* ---------- optional live sync to the instructor's Google Sheet ---------- */
   const CFG = window.CSAE_CONFIG || {};
   const syncOn = () => !!CFG.endpoint;
+  function deviceId() {
+    let id = store.get("cid", "");
+    if (!id) {
+      try { id = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join(""); }
+      catch (e) { id = (Date.now().toString(16) + Math.random().toString(16).slice(2)).padEnd(24, "0"); }
+      store.set("cid", id);
+    }
+    return id;
+  }
+  const SYNC_MSG = {
+    claimed: "This name is already registered on another device. Ask your instructor to unlock it.",
+    identity: "This device is registered under a different name, so the name cannot be changed. Ask your instructor if it is wrong.",
+    roster: "Your name is not in the class list. Type it exactly as your instructor listed it.",
+    client: "Could not identify this device. Reload the page and try again.",
+  };
   function syncReady() { const s = getStudent(); return syncOn() && store.get("consent", false) && s.name && s.section; }
   let syncTimer = null;
-  function scheduleSync() { if (!syncReady()) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 4000); }
-  function syncNow() {
-    if (!syncReady()) return Promise.resolve(false);
+  function scheduleSync() { if (!syncReady() || store.get("syncerr", null)) return; clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 4000); }
+  async function syncNow(force) {
+    if (!syncReady()) return { ok: false };
     clearTimeout(syncTimer);
-    const body = JSON.stringify({ key: CFG.key || "", data: snapshot() });
-    return fetch(CFG.endpoint, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body, keepalive: body.length < 60000 })
-      .then(() => { store.set("synced", new Date().toISOString()); return true; }, () => false);
+    const body = JSON.stringify({ key: CFG.key || "", data: Object.assign(snapshot(), { clientId: deviceId() }) });
+    const opts = { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body, keepalive: body.length < 60000 };
+    let res = null;
+    try { res = await (await fetch(CFG.endpoint, opts)).json(); }
+    catch (e) {
+      try { await fetch(CFG.endpoint, Object.assign({}, opts, { mode: "no-cors" })); res = { ok: true, unconfirmed: true }; }
+      catch (e2) { return { ok: false, error: "network" }; }
+    }
+    if (res && res.ok) { store.set("synced", new Date().toISOString()); store.set("syncerr", null); store.set("locked", true); return { ok: true }; }
+    const err = (res && res.error) || "unknown";
+    store.set("syncerr", SYNC_MSG[err] ? err : null);
+    return { ok: false, error: err };
   }
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && syncTimer) syncNow(); });
 
   function progressPage() {
-    const s = getStudent(), snap = snapshot();
+    const s = getStudent(), snap = snapshot(), lk = syncOn() && store.get("locked", false);
     const rows = snap.weeks.map((x) => {
       const w = C.lecture[x.week - 1];
       return `<div class="net-row prow"><span class="nm"><span class="wk">${String(x.week).padStart(2, "0")}</span><span class="tt">${esc(w.title)}</span></span>
@@ -489,10 +513,11 @@
       <section class="intro"><h1>My progress</h1>
       <p>This page shows what you have finished on this device. Fill in your details, download your progress file, and submit it on Google Classroom so your instructor can see how you are doing.</p></section>
       <form class="card sform" id="studentForm" autocomplete="off">
-        <label>Full name<input id="stName" value="${esc(s.name)}" required placeholder="Surname, Given name"></label>
-        <label>Section<select id="stSec"><option value="">Choose</option>${SECTIONS.map((x) => `<option ${s.section === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
-        <label>Student ID (optional)<input id="stId" value="${esc(s.id)}" placeholder="e.g. 24-0001"></label>
+        <label>Full name<input id="stName" value="${esc(s.name)}" ${lk ? "readonly" : ""} required placeholder="Surname, Given name"></label>
+        <label>Section<select id="stSec" ${lk ? "disabled" : ""}><option value="">Choose</option>${SECTIONS.map((x) => `<option ${s.section === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+        <label>Student ID (optional)<input id="stId" value="${esc(s.id)}" ${lk ? "readonly" : ""} placeholder="e.g. 24-0001"></label>
       </form>
+      ${lk ? `<p class="small lockmsg">Your name, section and ID are locked because your progress is shared with your instructor. If something is wrong, ask your instructor to unlock it.</p>` : ""}
       ${syncOn() ? `<div class="card consent"><label class="chk"><input type="checkbox" id="stConsent" ${store.get("consent", false) ? "checked" : ""}><span><b>Share my progress with my instructor.</b> My name, section, student ID (if given), percentages and quiz scores are sent to a Google Sheet that only my instructor reads. My notes are never sent. I can untick this any time.</span></label><p class="small" id="syncState"></p><button class="btn" type="button" id="syncNow">Send my progress now</button></div>` : ""}
       <div class="sums">
         <div class="card"><b id="sumL">${avg(snap.weeks.map((x) => x.lecture))}%</b><span>Lectures read</span></div>
@@ -521,14 +546,14 @@
     $("#dlJson").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.json`, JSON.stringify(d, null, 2), "application/json"); });
     $("#dlCsv").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.csv`, csv([d]), "text/csv"); });
     if (syncOn()) {
-      const st = () => { const t = store.get("synced", null), on = store.get("consent", false); $("#syncState").textContent = !on ? "Sharing is off." : t ? "Last sent: " + new Date(t).toLocaleString() : "Sharing is on. Your progress is sent automatically while you study."; };
+      const st = () => { const t = store.get("synced", null), on = store.get("consent", false), er = store.get("syncerr", null); $("#syncState").textContent = !on ? "Sharing is off." : er ? SYNC_MSG[er] : t ? "Last sent: " + new Date(t).toLocaleString() : "Sharing is on. Your progress is sent automatically while you study."; };
       st();
       $("#stConsent").addEventListener("change", (e) => { store.set("consent", e.target.checked); st(); if (e.target.checked) scheduleSync(); });
       $("#syncNow").addEventListener("click", async () => {
         save(); const s = getStudent();
         if (!store.get("consent", false)) { $("#syncState").textContent = "Tick the box above first."; return; }
         if (!s.name || !s.section) { $("#syncState").textContent = "Enter your full name and choose your section first."; return; }
-        $("#syncState").textContent = "Sending..."; await syncNow(); st();
+        $("#syncState").textContent = "Sending..."; const r = await syncNow(); st(); if (!r.ok && r.error === "network") $("#syncState").textContent = "Could not reach the server. Check your internet and try again."; else if (r.ok) setTimeout(() => location.reload(), 600);
       });
       $("#studentForm").addEventListener("input", scheduleSync);
     }

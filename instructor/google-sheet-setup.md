@@ -38,3 +38,12 @@ Commit and push. Students then see a "Share my progress with my instructor" box 
 - A student who clears their browser data loses local progress. Their row stays in the sheet until they sync again.
 - Only name, section, optional student ID, percentages and quiz scores are sent. Notes are never sent.
 - To stop collecting data, set `endpoint` back to `""` or use **Deploy > Manage deployments > Archive**.
+
+## Stopping name changes and impersonation
+- **One name per device.** The first device to sync a name owns that row (the hidden-looking `Device ID` column at the far right of the Progress sheet). Another device cannot send progress under the same name, and a device that has already synced cannot switch to a different name. Students see a clear message instead.
+- **Locked fields.** After the first successful sync, the name, section and ID fields on the My progress page are locked. "Reset my progress" clears progress only, not the name.
+- **Unlocking a student** (new phone, cleared browser data, typo in the name): in the Progress sheet, clear that student's cell in the last column (**Device ID**). Their next sync claims the row again. For a wrong name, delete the whole row and ask the student to sync again.
+- **Class list (strongest option).** Run `setup` again to create a **Roster** tab, then list your students there (Name, Section, Student ID). When the Roster has names, only those names are accepted, matched ignoring capital letters and extra spaces, and the section and ID are taken from your list. Leave it empty to accept any name.
+- This is a deterrent, not a login. A student who clears their browser data and uses a new name can still start a new row unless you use the Roster, so keep an eye out for names that are not on your class list.
+
+After changing the script, always use **Deploy > Manage deployments > Edit > New version > Deploy**.

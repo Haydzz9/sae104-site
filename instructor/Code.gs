@@ -6,10 +6,10 @@
 const SECRET = "change-this-secret";           // must match "key" in assets/config.js
 const SECTIONS = ["3B", "3E", "3F", "3G"];
 const WEEKS = 18;
-const DATA = "Progress", SETTINGS = "Settings";
+const DATA = "Progress", SETTINGS = "Settings", ROSTER = "Roster";
 // Columns: A Key | B Name | C Section | D Student ID | E Updated | F Last active | G Lecture % | H Lab % | I Quiz avg %
-// J Weeks behind (formula) | K..AB lecture W1-18 | AC..AT lab W1-18 | AU..BL quiz W1-18 | BM raw JSON
-const COL = { lec: 11, lab: 11 + WEEKS, quiz: 11 + 2 * WEEKS, raw: 11 + 3 * WEEKS };
+// J Weeks behind (formula) | K..AB lecture W1-18 | AC..AT lab W1-18 | AU..BL quiz W1-18 | BM raw JSON | BN device id
+const COL = { lec: 11, lab: 11 + WEEKS, quiz: 11 + 2 * WEEKS, raw: 11 + 3 * WEEKS, cid: 12 + 3 * WEEKS };
 
 function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 function num_(x) { x = Number(x); return isFinite(x) ? Math.max(0, Math.min(100, Math.round(x))) : 0; }
@@ -20,13 +20,34 @@ function safe_(s) { return /^[=+\-@]/.test(s) ? "'" + s : s; }
 
 function doGet() { return out_({ ok: true, message: "CSAE 104 progress endpoint is running" }); }
 
+function norm_(s) { return String(s || "").toLowerCase().replace(/\s+/g, " ").trim(); }
+
+// Optional class list: a sheet named "Roster" with Name | Section | Student ID (header row allowed).
+// When it has names, only those names are accepted.
+function roster_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ROSTER);
+  if (!sh || sh.getLastRow() < 1) return [];
+  const vals = sh.getRange(1, 1, sh.getLastRow(), 3).getValues();
+  return vals.filter(function (r, i) { return String(r[0]).trim() && !(i === 0 && norm_(r[0]) === "name"); })
+    .map(function (r) { return { name: str_(r[0]), section: str_(r[1], 5), id: str_(r[2], 30) }; });
+}
+
 function doPost(e) {
   try {
     const p = JSON.parse(e.postData.contents);
     if (p.key !== SECRET) return out_({ ok: false, error: "key" });
     const d = p.data;
     if (!d || d.app !== "csae104-progress" || !d.student || !Array.isArray(d.weeks)) return out_({ ok: false, error: "format" });
-    const name = str_(d.student.name), section = str_(d.student.section, 5), id = str_(d.student.id, 30);
+    const cid = str_(d.clientId, 64);
+    if (cid.length < 12) return out_({ ok: false, error: "client" });
+    let name = str_(d.student.name), section = str_(d.student.section, 5), id = str_(d.student.id, 30);
+
+    const roster = roster_();
+    if (roster.length) {
+      const hit = roster.filter(function (r) { return norm_(r.name) === norm_(name); })[0];
+      if (!hit) return out_({ ok: false, error: "roster" });
+      name = hit.name; section = hit.section || section; id = hit.id || id;
+    }
     if (!name || SECTIONS.indexOf(section) < 0) return out_({ ok: false, error: "student" });
 
     const lec = [], lab = [], quiz = [];
@@ -36,20 +57,34 @@ function doPost(e) {
       quiz.push(x.quiz && x.quiz.total ? Math.max(0, Math.min(+x.quiz.total, +x.quiz.best || 0)) + "/" + (+x.quiz.total) : "");
     }
     const qp = quiz.filter(String).map(function (q) { const a = q.split("/"); return Math.round((a[0] / a[1]) * 100); });
-    const key = (name + "|" + id).toLowerCase();
+    const key = norm_(name) + "|" + id.toLowerCase();
 
     const lock = LockService.getScriptLock(); lock.waitLock(20000);
     try {
       const sh = sheet_();
       const last = sh.getLastRow();
-      let row = 0;
-      if (last > 1) { const keys = sh.getRange(2, 1, last - 1, 1).getValues(); for (let i = 0; i < keys.length; i++) if (keys[i][0] === key) { row = i + 2; break; } }
+      let row = 0, cidRow = 0;
+      if (last > 1) {
+        const keys = sh.getRange(2, 1, last - 1, 1).getValues();
+        const cids = sh.getRange(2, COL.cid, last - 1, 1).getValues();
+        for (let i = 0; i < keys.length; i++) {
+          if (keys[i][0] === key) row = i + 2;
+          if (cids[i][0] === cid) cidRow = i + 2;
+        }
+      }
+      // this device already belongs to a different student name: the name cannot be changed
+      if (cidRow && cidRow !== row) return out_({ ok: false, error: "identity" });
+      // this name was first claimed by another device
+      if (row) { const owner = String(sh.getRange(row, COL.cid).getValue() || ""); if (owner && owner !== cid) return out_({ ok: false, error: "claimed" }); }
+
       const isNew = !row; if (isNew) row = last + 1;
       sh.getRange(row, 1, 1, 9).setValues([[key, safe_(name), section, safe_(id), new Date(), d.lastActive ? new Date(d.lastActive) : "", avg_(lec), avg_(lab), avg_(qp)]]);
       sh.getRange(row, COL.lec, 1, WEEKS).setValues([lec]);
       sh.getRange(row, COL.lab, 1, WEEKS).setValues([lab]);
       sh.getRange(row, COL.quiz, 1, WEEKS).setValues([quiz]);
       sh.getRange(row, COL.raw).setValue(JSON.stringify(d).slice(0, 20000));
+      sh.getRange(row, COL.cid).setValue(cid);
+      if (!sh.getRange(1, COL.cid).getValue()) sh.getRange(1, COL.cid).setValue("Device ID (clear this cell to unlock the student)").setFontWeight("bold").setBackground("#E8EDF3");
       if (isNew) sh.getRange(row, 10).setFormula(behindFormula_(row));
     } finally { lock.releaseLock(); }
     return out_({ ok: true });
@@ -105,6 +140,11 @@ function repairFormulas() {
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   settings_();
+  if (!ss.getSheetByName(ROSTER)) {
+    const r = ss.insertSheet(ROSTER);
+    r.getRange("A1:C1").setValues([["Name", "Section", "Student ID"]]).setFontWeight("bold").setBackground("#E8EDF3");
+    r.getRange("E1").setValue("Optional. List your students here (Name, Section 3B/3E/3F/3G, Student ID). When this sheet has names, only these names can sync. Leave it empty to accept any name.");
+  }
   let sh = ss.getSheetByName(DATA);
   if (!sh) { sh = ss.insertSheet(DATA); setupHeaders_(sh); }
   const red = SpreadsheetApp.newConditionalFormatRule().whenNumberLessThan(80).setBackground("#FADAD7").setRanges([sh.getRange(2, 7, 500, 2), sh.getRange(2, COL.lec, 500, 2 * WEEKS)]).build();
