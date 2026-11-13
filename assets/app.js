@@ -91,6 +91,7 @@
       <nav class="nav" aria-label="Main">
         <a data-k="lecture" href="lecture.html" ${kind === "lecture" ? "aria-current=page" : ""}>Lecture</a>
         <a data-k="laboratory" href="laboratory.html" ${kind === "laboratory" ? "aria-current=page" : ""}>Laboratory</a>
+        <a data-k="progress" href="progress.html" ${kind === "progress" ? "aria-current=page" : ""}>My progress</a>
       </nav>
       <button class="icon-btn" id="openSearch" type="button" aria-label="Search the course">${ICON_SEARCH}<span>Search</span><kbd>/</kbd></button>
       <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch light or dark theme">${ICON_THEME}</button>
@@ -99,7 +100,7 @@
   function footer() {
     return `<footer class="site"><div class="wrap">
       <div>CSAE 104 Web Programming, College of Computer Science, DMMMSU-SLUC<br>Haydee D. Limson, MIS. 2nd Semester AY 2026-2027</div>
-      <div>Your progress is saved in this browser only. <button type="button" id="resetBtn">Reset my progress</button></div>
+      <div>Your progress is saved in this browser only. <a href="progress.html">Export it</a> to share with your instructor. <a href="teacher.html">Instructor view</a>. <button type="button" id="resetBtn">Reset my progress</button></div>
     </div></footer>
     <dialog class="search" id="searchDlg" aria-label="Search"><input id="searchIn" type="search" placeholder="Search lectures and labs, for example: middleware" autocomplete="off"><ul id="searchOut"></ul></dialog>`;
   }
@@ -120,7 +121,7 @@
     INDEX = [];
     ["lecture", "laboratory"].forEach((t) => (C[t] || []).forEach((w) => {
       w.sections.forEach((s) => {
-        const txt = (s.blocks || []).map((b) => b.k === "list" ? b.items.map((i) => i.map((x) => x[0]).join("")).join(" ") : b.k === "table" ? b.head.concat(...b.rows).join(" ") : b.t || "").concat(s.extra || [], s.sub || "").join(" ");
+        const txt = (s.blocks || []).map((b) => b.k === "list" ? b.items.map((i) => i.map((x) => x[0]).join("")).join(" ") : b.k === "table" ? b.head.concat(...b.rows).join(" ") : b.k === "compare" ? [b.bad, b.good, b.badNote, b.goodNote].join(" ") : b.t || "").concat(s.extra || [], s.sub || "").join(" ");
         INDEX.push({ t, wk: w.week, wt: w.title, sid: s.id, title: s.title, text: txt });
       });
       if (w.syllabus) { const y = w.syllabus; INDEX.push({ t, wk: w.week, wt: w.title, sid: "syllabus", title: "Where this fits in the syllabus", text: [].concat(y.outcomes, y.topics[t], y.methods, y.resources, y.assessment, y.sdg.map((g) => g.goal + " " + g.link)).join(" ") }); }
@@ -237,10 +238,23 @@
   function codeHTML(b) {
     let h;
     try { h = b.lang !== "text" && hljs.getLanguage(b.lang) ? hljs.highlight(b.t, { language: b.lang }).value : esc(b.t); } catch (e) { h = esc(b.t); }
-    return `<div class="cb"><div class="cb-h"><span>${LANGS[b.lang] || "Code"}</span><button type="button" data-copy>Copy</button></div><pre tabindex="0"><code class="hljs">${h}</code></pre></div>`;
+    return `<div class="cb"><div class="cb-h"><span>${LANGS[b.lang] || "Code"}</span><button type="button" data-copy>Copy</button></div><pre tabindex="0"><code class="hljs">${h}</code></pre></div>${b.pv ? previewHTML(b) : ""}`;
+  }
+  /* Live "Rendered result" under a code block: b.pv is true (render b.t) or a string (render that instead). Scripts, forms and links are switched off. */
+  const PV_IMG = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200"><rect width="300" height="200" fill="#d9dee7"/><path d="M0 200l90-90 60 60 50-50 100 100z" fill="#b3bccb"/><circle cx="220" cy="55" r="20" fill="#f3f5f9"/></svg>');
+  const PV_CSS = "body{font:16px/1.5 system-ui,Segoe UI,sans-serif;margin:14px;color:#111;background:#fff}img{max-width:100%;height:auto}a{pointer-events:none}";
+  function previewHTML(b) {
+    const src = (typeof b.pv === "string" ? b.pv : b.t).replace(/(<img\b[^>]*?\bsrc=")(?!data:|https?:)[^"]*"/g, `$1${PV_IMG}"`);
+    const doc = `<!doctype html><html lang="en"><head><meta charset="utf-8"><style>${PV_CSS}</style></head><body>${src}</body></html>`;
+    return `<div class="rv"><div class="rv-h"><span>Rendered result</span><em>Plain browser style, no CSS yet. Links are switched off here.</em></div><iframe class="rv-f" sandbox title="Rendered result of the code above" loading="lazy" srcdoc="${esc(doc)}" style="height:${b.ph || 150}px"></iframe></div>`;
+  }
+  function compareHTML(b) {
+    const col = (cls, label, code, note) => `<div class="cmp-c ${cls}"><div class="cmp-h">${label}</div>${codeHTML({ t: code, lang: b.lang || "xml" })}<p>${rich(note)}</p></div>`;
+    return `<div class="cmp">${col("bad", b.badLabel || "Avoid", b.bad, b.badNote)}${col("good", b.goodLabel || "Better", b.good, b.goodNote)}</div>`;
   }
   function blockHTML(b, s, t, w) {
     if (b.k === "code") return codeHTML(b);
+    if (b.k === "compare") return compareHTML(b);
     if (b.k === "p") return `<p>${rich(b.t)}</p>`;
     if (b.k === "callout") return /:$/.test(b.t) && b.t.length < 90 ? `<p class="lead-in">${rich(b.t)}</p>` : `<p class="callout">${rich(b.t)}</p>`;
     if (b.k === "table") return `<div class="tw"><table><thead><tr>${b.head.map((h) => `<th>${rich(h)}</th>`).join("")}</tr></thead><tbody>${b.rows.map((r) => `<tr>${r.map((c) => `<td>${rich(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
@@ -318,6 +332,7 @@
       $("#score").textContent = `Score: ${right}/${answered} of ${total}`;
       if (answered === total) {
         const best = store.get(`quiz:${t}:${w.week}`, null);
+        store.set("active", new Date().toISOString());
         if (!best || right > best.best) store.set(`quiz:${t}:${w.week}`, { best: right, total });
         $("#score").textContent = `Final score: ${right}/${total}`;
       }
@@ -382,6 +397,7 @@
       });
     };
     const mark = (field, id, on) => {
+      store.set("active", new Date().toISOString());
       const P = getP(t, n), set = new Set(P[field]);
       on ? set.add(id) : set.delete(id); P[field] = Array.from(set); store.set(pkey(t, n), P); upd();
     };
@@ -425,6 +441,136 @@
     if (location.hash) { const el = document.getElementById(decodeURIComponent(location.hash.slice(1))); if (el) setTimeout(() => el.scrollIntoView(), 50); }
   }
 
+  /* ---------- progress export (student) and class view (instructor) ---------- */
+  const SECTIONS = ["3B", "3E", "3F", "3G"];
+  const getStudent = () => store.get("student", { name: "", section: "", id: "" });
+  function snapshot() {
+    const n = C.lecture.length, weeks = [];
+    for (let w = 1; w <= n; w++) {
+      const l = progress("lecture", w), b = progress("laboratory", w), q = store.get(`quiz:lecture:${w}`, null);
+      weeks.push({ week: w, lecture: l.pct, laboratory: b.pct, labDone: b.got, labTotal: b.total, quiz: q ? { best: q.best, total: q.total } : null });
+    }
+    return { app: "csae104-progress", version: 1, exportedAt: new Date().toISOString(), lastActive: store.get("active", null), student: getStudent(), weeks };
+  }
+  const avg = (a) => (a.length ? Math.round(a.reduce((s, x) => s + x, 0) / a.length) : 0);
+  const quizAvg = (weeks) => avg(weeks.filter((x) => x.quiz && x.quiz.total).map((x) => Math.round((x.quiz.best / x.quiz.total) * 100)));
+  function download(name, text, type) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  const slugName = (s) => (s || "student").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "student";
+  const bar = (p) => `<span class="pbar"><span class="meter" style="--p:${p}%"><i></i></span><b>${p}%</b></span>`;
+
+  function progressPage() {
+    const s = getStudent(), snap = snapshot();
+    const rows = snap.weeks.map((x) => {
+      const w = C.lecture[x.week - 1];
+      return `<div class="net-row prow"><span class="nm"><span class="wk">${String(x.week).padStart(2, "0")}</span><span class="tt">${esc(w.title)}</span></span>
+        <span data-l="Lecture">${bar(x.lecture)}</span><span data-l="Laboratory">${bar(x.laboratory)}</span><span data-l="Quiz">${x.quiz ? `${x.quiz.best}/${x.quiz.total}` : "-"}</span></div>`;
+    }).join("");
+    return `<main id="main" class="wrap pg">
+      <section class="intro"><h1>My progress</h1>
+      <p>This page shows what you have finished on this device. Fill in your details, download your progress file, and submit it on Google Classroom so your instructor can see how you are doing.</p></section>
+      <form class="card sform" id="studentForm" autocomplete="off">
+        <label>Full name<input id="stName" value="${esc(s.name)}" required placeholder="Surname, Given name"></label>
+        <label>Section<select id="stSec"><option value="">Choose</option>${SECTIONS.map((x) => `<option ${s.section === x ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+        <label>Student ID (optional)<input id="stId" value="${esc(s.id)}" placeholder="e.g. 24-0001"></label>
+      </form>
+      <div class="sums">
+        <div class="card"><b id="sumL">${avg(snap.weeks.map((x) => x.lecture))}%</b><span>Lectures read</span></div>
+        <div class="card"><b id="sumB">${avg(snap.weeks.map((x) => x.laboratory))}%</b><span>Lab steps done</span></div>
+        <div class="card"><b id="sumQ">${quizAvg(snap.weeks)}%</b><span>Average best quiz score</span></div>
+      </div>
+      <div class="net"><div class="net-head prow"><span>Week</span><span>Lecture</span><span>Laboratory</span><span>Quiz</span></div>${rows}</div>
+      <div class="pactions">
+        <button class="btn solid" type="button" id="dlJson">Download my progress file</button>
+        <button class="btn" type="button" id="dlCsv">Download as CSV</button>
+        <button class="btn" type="button" id="prn">Print or save as PDF</button>
+      </div>
+      <p class="net-note" id="pmsg" role="status">Your name and section are required before you download. The file contains only your name, section, student ID, and your percentages and quiz scores. It does not contain your notes. Your instructor asks you to submit the file on Google Classroom.</p>
+    </main>`;
+  }
+  function wireProgress() {
+    const save = () => store.set("student", { name: $("#stName").value.trim(), section: $("#stSec").value, id: $("#stId").value.trim() });
+    $$("#studentForm input,#studentForm select").forEach((e) => e.addEventListener("input", save));
+    $("#studentForm").addEventListener("submit", (e) => e.preventDefault());
+    const ready = () => {
+      save(); const s = getStudent();
+      if (!s.name || !s.section) { $("#pmsg").textContent = "Please enter your full name and choose your section first."; $("#pmsg").style.color = "var(--bad)"; $("#stName").focus(); return null; }
+      $("#pmsg").style.color = ""; $("#pmsg").textContent = "Downloaded. Now submit the file on Google Classroom. Download a new file whenever your instructor asks for an update.";
+      return snapshot();
+    };
+    $("#dlJson").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.json`, JSON.stringify(d, null, 2), "application/json"); });
+    $("#dlCsv").addEventListener("click", () => { const d = ready(); if (d) download(`csae104-${slugName(d.student.name)}-${d.exportedAt.slice(0, 10)}.csv`, csv([d]), "text/csv"); });
+    $("#prn").addEventListener("click", () => { save(); window.print(); });
+  }
+
+  /* instructor view: load the files students submitted; everything stays in this browser */
+  const csvCell = (v) => { v = String(v == null ? "" : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  function csv(list) {
+    const n = C.lecture.length;
+    const head = ["Name", "Section", "Student ID", "Exported", "Last active", "Lecture %", "Lab %", "Quiz avg %"];
+    for (let w = 1; w <= n; w++) head.push(`W${w} lecture %`, `W${w} lab %`, `W${w} quiz`);
+    const lines = [head].concat(list.map((d) => {
+      const r = [d.student.name, d.student.section, d.student.id, d.exportedAt, d.lastActive || "", avg(d.weeks.map((x) => x.lecture)), avg(d.weeks.map((x) => x.laboratory)), quizAvg(d.weeks)];
+      d.weeks.forEach((x) => r.push(x.lecture, x.laboratory, x.quiz ? `${x.quiz.best}/${x.quiz.total}` : ""));
+      return r;
+    }));
+    return lines.map((r) => r.map(csvCell).join(",")).join("\r\n");
+  }
+  const validFile = (d) => d && d.app === "csae104-progress" && d.student && Array.isArray(d.weeks) && d.weeks.every((x) => Number.isFinite(x.lecture) && Number.isFinite(x.laboratory));
+  function teacherPage() {
+    return `<main id="main" class="wrap pg">
+      <section class="intro"><h1>Class progress</h1>
+      <p>Open the progress files your students submitted. The files are read in this browser only and are not uploaded anywhere. If a student submits twice, the newest file is used.</p></section>
+      <div class="card tctl">
+        <label class="fbtn btn solid">Choose progress files<input id="tFiles" type="file" accept=".json,application/json" multiple hidden></label>
+        <label>Section<select id="tSec"><option value="">All</option>${SECTIONS.map((x) => `<option>${x}</option>`).join("")}</select></label>
+        <label>Current week<input id="tWeek" type="number" min="1" max="${C.lecture.length}" value="1"></label>
+        <label>Behind if below<input id="tThr" type="number" min="1" max="100" value="80"> %</label>
+        <button class="btn" type="button" id="tCsv" disabled>Download class CSV</button>
+      </div>
+      <p class="net-note" id="tMsg" role="status">No files loaded yet.</p>
+      <div class="tscroll"><table class="ttable" id="tTable" hidden><thead><tr><th>Name</th><th>Section</th><th>Lectures</th><th>Labs</th><th>Quiz avg</th><th>Weeks behind</th><th>Last active</th><th>Exported</th></tr></thead><tbody id="tBody"></tbody></table></div>
+    </main>`;
+  }
+  function wireTeacher() {
+    let people = new Map();
+    const render = () => {
+      const sec = $("#tSec").value, cur = Math.max(1, Math.min(C.lecture.length, +$("#tWeek").value || 1)), thr = +$("#tThr").value || 80;
+      const list = [...people.values()].filter((d) => !sec || d.student.section === sec).sort((a, b) => (a.student.section + a.student.name).localeCompare(b.student.section + b.student.name));
+      $("#tTable").hidden = !list.length; $("#tCsv").disabled = !list.length;
+      $("#tBody").innerHTML = list.map((d) => {
+        const behind = d.weeks.filter((x) => x.week <= cur && (x.lecture < thr || x.laboratory < thr)).map((x) => x.week);
+        const la = d.lastActive ? new Date(d.lastActive).toLocaleDateString() : "-";
+        return `<tr class="${behind.length ? "late" : ""}"><td>${esc(d.student.name)}${d.student.id ? `<small>${esc(d.student.id)}</small>` : ""}</td><td>${esc(d.student.section)}</td><td>${bar(avg(d.weeks.map((x) => x.lecture)))}</td><td>${bar(avg(d.weeks.map((x) => x.laboratory)))}</td><td>${quizAvg(d.weeks)}%</td><td>${behind.length ? `<b>${behind.length}</b> <small>(${behind.map((x) => "W" + x).join(", ")})</small>` : "On track"}</td><td>${la}</td><td>${new Date(d.exportedAt).toLocaleDateString()}</td></tr>`;
+      }).join("");
+      if (people.size) $("#tMsg").textContent = `${list.length} of ${people.size} students shown. "Behind" means a lecture or lab below ${thr}% in any week up to Week ${cur}.`;
+    };
+    $("#tFiles").addEventListener("change", async (e) => {
+      let bad = 0;
+      for (const f of e.target.files) {
+        try {
+          const d = JSON.parse(await f.text());
+          if (!validFile(d)) { bad++; continue; }
+          const key = (d.student.name || "").toLowerCase().trim() + "|" + (d.student.id || "");
+          const old = people.get(key);
+          if (!old || old.exportedAt < d.exportedAt) people.set(key, d);
+        } catch (err) { bad++; }
+      }
+      render();
+      if (bad) $("#tMsg").textContent += ` ${bad} file(s) were skipped because they are not valid CSAE 104 progress files.`;
+      e.target.value = "";
+    });
+    ["tSec", "tWeek", "tThr"].forEach((id) => $("#" + id).addEventListener("input", render));
+    $("#tCsv").addEventListener("click", () => {
+      const sec = $("#tSec").value;
+      download(`csae104-class-progress-${new Date().toISOString().slice(0, 10)}.csv`, csv([...people.values()].filter((d) => !sec || d.student.section === sec)), "text/csv");
+    });
+  }
+
   /* ---------- boot ---------- */
   function boot() {
     initTheme();
@@ -438,10 +584,14 @@
       title = `Week ${n} ${KINDS[kind].label}: ${C[kind].find((x) => x.week === n).title} | CSAE 104`;
       html = weekPage(kind, n);
     } else if (page === "list") { html = list(kind); title = `${KINDS[kind].label} | CSAE 104 Web Programming`; }
+    else if (page === "progress") { html = progressPage(); title = "My progress | CSAE 104"; kind = "progress"; document.body.dataset.kind = kind; }
+    else if (page === "teacher") { html = teacherPage(); title = "Class progress | CSAE 104"; kind = "teacher"; document.body.dataset.kind = kind; }
     else html = home();
     document.title = title;
     $("#app").innerHTML = header(kind) + html + footer();
     wireShell();
+    if (page === "progress") wireProgress();
+    if (page === "teacher") wireTeacher();
     if (page === "week") wireWeek(kind, parseInt(q.get("w"), 10) || 1);
   }
   boot();

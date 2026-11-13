@@ -305,3 +305,40 @@ dialog.search::backdrop{background:rgba(8,14,26,.55)}
 .sdg-i p{margin:.2rem 0}
 .pnote{margin:.9rem 0 0;color:var(--muted);font-size:.95rem}
 @media (max-width:760px){.syl-grid>div{grid-template-columns:1fr;gap:.3rem}.sec.orient{margin-left:0}}
+
+/* ---------- rendered result under code, and avoid-vs-better pairs ---------- */
+.cb + .rv{margin:-.55rem 0 1rem;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;overflow:hidden;background:var(--surface)}
+.rv-h{display:flex;flex-wrap:wrap;gap:.2rem .8rem;align-items:baseline;padding:.35rem .9rem;background:var(--soft);border-bottom:1px solid var(--line);font:600 .8rem var(--mono);color:var(--ink)}
+.rv-h em{font:400 .8rem var(--body);font-style:normal;color:var(--muted)}
+.rv-f{display:block;width:100%;border:0;background:#fff}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.cmp-c{min-width:0;border:1px solid var(--line);border-top:4px solid var(--c);border-radius:12px;background:var(--surface);padding:.2rem .8rem .5rem}
+.cmp-c.bad{--c:var(--bad)} .cmp-c.good{--c:var(--ok)}
+.cmp-h{font:700 .85rem var(--mono);color:var(--c);padding:.55rem 0 0;text-transform:uppercase;letter-spacing:.04em}
+.cmp-c .cb{margin:.5rem 0}
+.cmp-c p{margin:.3rem 0 .2rem;font-size:.95rem}
+@media (max-width:720px){.cmp{grid-template-columns:1fr}}
+@media print{.rv{display:none}}
+
+/* ---------- progress and instructor pages ---------- */
+body[data-kind="progress"],body[data-kind="teacher"]{--accent:var(--lab);--accent-ink:var(--lab-ink);--accent-tint:var(--lab-tint)}
+.pg .intro{padding:2.4rem 0 1rem}.pg .intro h1{font-size:clamp(2rem,4.5vw,3rem)}.pg .intro p{max-width:62ch;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:1rem 1.2rem}
+.sform,.tctl{display:flex;flex-wrap:wrap;gap:1rem 1.2rem;align-items:flex-end;margin:1rem 0}
+.sform label,.tctl label{display:flex;flex-direction:column;gap:.25rem;font:600 .9rem var(--body);color:var(--muted);flex:1 1 200px}
+.tctl label{flex:0 1 auto}.tctl input[type=number]{width:6rem}
+.sform input,.sform select,.tctl select,.tctl input[type=number]{font:inherit;color:var(--ink);background:var(--paper);border:1.5px solid var(--line);border-radius:8px;padding:.5rem .65rem}
+.fbtn{cursor:pointer}
+.sums{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin:1rem 0}
+.sums .card{display:flex;flex-direction:column;gap:.2rem}.sums b{font:700 2.2rem var(--display);color:var(--accent-ink)}.sums span{color:var(--muted)}
+.prow{grid-template-columns:minmax(0,2.4fr) minmax(120px,1fr) minmax(120px,1fr) 70px}
+.pbar{display:flex;align-items:center;gap:.6rem}.pbar .meter{flex:1;min-width:50px}.pbar b{font:600 .9rem var(--mono);min-width:3.4ch;text-align:right}
+.pactions{display:flex;flex-wrap:wrap;gap:.7rem;margin:1.4rem 0 .6rem}
+.tscroll{overflow-x:auto;margin-bottom:3rem}
+.ttable{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:14px;font-size:.95rem}
+.ttable th,.ttable td{padding:.6rem .8rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+.ttable th{font:700 .8rem var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:var(--soft)}
+.ttable td small{display:block;color:var(--muted)}.ttable tr.late td:nth-child(6){color:var(--bad)}
+.ttable .pbar{min-width:130px}
+@media (max-width:720px){.prow{grid-template-columns:1fr 1fr}.net-head.prow{display:none}.prow .nm{grid-column:1/-1}.prow [data-l]::before{content:attr(data-l) ": ";color:var(--muted);font-size:.85rem}}
+@media print{.top,footer.site,.pactions{display:none}.sform select{appearance:none}}
