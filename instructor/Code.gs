@@ -18,6 +18,19 @@ function avg_(a) { return a.length ? Math.round(a.reduce(function (s, x) { retur
 // stop spreadsheet formulas being injected through names
 function safe_(s) { return /^[=+\-@]/.test(s) ? "'" + s : s; }
 
+// A quiz score is stored as the text "right/total". Google Sheets turns text such as 5/5 into a date (5 May),
+// so the quiz cells are formatted as plain text, and any date that slipped in is converted back
+// (month = questions right, day = questions in the quiz).
+function normQuiz_(v) {
+  if (v instanceof Date) return (v.getMonth() + 1) + "/" + v.getDate();
+  return String(v == null ? "" : v).trim();
+}
+function quizAvg_(arr) {
+  const pcts = [];
+  arr.forEach(function (q) { const m = /^(\d+)\/(\d+)$/.exec(q); if (m && +m[2] > 0) pcts.push(Math.round((+m[1] / +m[2]) * 100)); });
+  return avg_(pcts);
+}
+
 function doGet() { return out_({ ok: true, message: "CSAE 104 progress endpoint is running" }); }
 
 function norm_(s) { return String(s || "").toLowerCase().replace(/\s+/g, " ").trim(); }
@@ -213,12 +226,11 @@ function doPost(e) {
 
       const isNew = !row; if (isNew) row = last + 1;
       // each quiz counts once: a score already on the sheet is never replaced
-      if (!isNew) { const oldQ = sh.getRange(row, COL.quiz, 1, WEEKS).getValues()[0]; for (let i = 0; i < WEEKS; i++) if (oldQ[i]) quiz[i] = String(oldQ[i]); }
-      const qp = quiz.filter(String).map(function (q) { const a = q.split("/"); return Math.round((a[0] / a[1]) * 100); });
-      sh.getRange(row, 1, 1, 9).setValues([[key, safe_(name), section, safe_(id), new Date(), d.lastActive ? new Date(d.lastActive) : "", avg_(lec), avg_(lab), avg_(qp)]]);
+      if (!isNew) { const oldQ = sh.getRange(row, COL.quiz, 1, WEEKS).getValues()[0]; for (let i = 0; i < WEEKS; i++) { const o = normQuiz_(oldQ[i]); if (o) quiz[i] = o; } }
+      sh.getRange(row, 1, 1, 9).setValues([[key, safe_(name), section, safe_(id), new Date(), d.lastActive ? new Date(d.lastActive) : "", avg_(lec), avg_(lab), quizAvg_(quiz)]]);
       sh.getRange(row, COL.lec, 1, WEEKS).setValues([lec]);
       sh.getRange(row, COL.lab, 1, WEEKS).setValues([lab]);
-      sh.getRange(row, COL.quiz, 1, WEEKS).setValues([quiz]);
+      sh.getRange(row, COL.quiz, 1, WEEKS).setNumberFormat("@").setValues([quiz]);
       sh.getRange(row, COL.raw).setValue(JSON.stringify(d).slice(0, 20000));
       sh.getRange(row, COL.cid).setValue(cid);
       if (!sh.getRange(1, COL.cid).getValue()) sh.getRange(1, COL.cid).setValue("Device ID (clear this cell to unlock the student)").setFontWeight("bold").setBackground("#E8EDF3");
@@ -279,6 +291,7 @@ function notRegisteredSheet_() {
     sh.getRange("E1:E3").setValues([["Roster size"], ["Registered"], ["Not registered"]]).setFontWeight("bold");
     sh.setColumnWidth(1, 240); sh.setColumnWidth(5, 130);
   }
+  sh.getRange("A2:C").clearContent();
   sh.getRange("A2").setFormula('=IF(COUNTA(Roster!A2:A)=0, "Add your students to the Roster tab first", IFERROR(FILTER(Roster!A2:C, Roster!A2:A<>"", COUNTIF(Progress!B2:B, Roster!A2:A)=0), "Everyone on the Roster has registered"))');
   sh.getRange("F1").setFormula('=COUNTA(Roster!A2:A)');
   sh.getRange("F2").setFormula('=SUMPRODUCT((Roster!A2:A<>"")*(COUNTIF(Progress!B2:B, Roster!A2:A)>0))');
@@ -295,8 +308,20 @@ function inactiveSheet_() {
     sh.getRange("A1:E1").setValues([["Name", "Section", "Student ID", "Last sync", "Days inactive"]]).setFontWeight("bold").setBackground("#E8EDF3");
     sh.getRange("D:D").setNumberFormat("yyyy-mm-dd hh:mm"); sh.setColumnWidth(1, 240); sh.setColumnWidth(4, 150);
   }
+  sh.getRange("A2:E").clearContent();
   sh.getRange("A2").setFormula('=IFERROR(ARRAYFORMULA(FILTER({Progress!B2:B, Progress!C2:C, Progress!D2:D, Progress!E2:E, ROUND(TODAY()-Progress!E2:E)}, Progress!B2:B<>"", TODAY()-Progress!E2:E>INDIRECT("Settings!$B$3"))), "No inactive students")');
   return sh;
+}
+
+/** Converts quiz scores that Sheets turned into dates back to text such as 5/5, and recalculates Quiz avg %. */
+function repairQuizzes() {
+  const sh = sheet_(), last = sh.getLastRow();
+  if (last < 2) return;
+  const rng = sh.getRange(2, COL.quiz, last - 1, WEEKS);
+  const vals = rng.getValues().map(function (row) { return row.map(normQuiz_); });
+  rng.setNumberFormat("@").setValues(vals);
+  sh.getRange(2, 9, last - 1, 1).setValues(vals.map(function (row) { return [quizAvg_(row)]; }));
+  sh.getRange(last + 1, COL.quiz, 1000, WEEKS).setNumberFormat("@");
 }
 
 /** Rewrites the Weeks behind formula in every row. Run it if you ever see #REF! in that column. */
@@ -327,5 +352,6 @@ function setup() {
   const late = SpreadsheetApp.newConditionalFormatRule().whenNumberGreaterThan(0).setBackground("#FBEBCF").setBold(true).setRanges([sh.getRange(2, 10, 500, 1)]).build();
   const idle = SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND($B2<>"", TODAY()-$E2>INDIRECT("Settings!$B$3"))').setBackground("#FADAD7").setRanges([sh.getRange(2, 2, 500, 1), sh.getRange(2, 5, 500, 1)]).build();
   sh.setConditionalFormatRules([red, late, idle]);
+  repairQuizzes();
   repairFormulas();
 }

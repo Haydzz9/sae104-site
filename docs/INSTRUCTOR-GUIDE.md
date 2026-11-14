@@ -163,6 +163,8 @@ Changes to the website (anything outside `instructor/`) need only a push to GitH
 | "Weeks behind" shows `#REF!` | The **Settings** tab is missing, or the cell is stuck. Run **repairFormulas** from the Apps Script editor |
 | New tabs (Grading, Not registered, Inactive) or the Score columns are missing | **setup** has not run with the latest code. Paste the new code and run **setup** |
 | "Not registered" or "Inactive" tabs are empty or show an error | Run **setup** again. The Roster tab must have names |
+| Quiz cells show dates (for example "Tue May 05 2026") and **Quiz avg %** shows `#NUM!` | Sheets turned a score such as 5/5 into a date. Paste the latest script and run **setup** (or **repairQuizzes**). It converts the dates back to 5/5 and recalculates the average. New scores are stored as plain text |
+| **Not registered** shows `#REF!` in its first cell | Something is in the cells where the list needs to appear. Run **setup**: it clears that area and rebuilds the list |
 | A change to the script has no effect | You did not create a **New version** of the deployment (section 7) |
 | A student sees no scores | The Released box is not ticked, no number is in Score, or the student has not registered on that device |
 | New quiz scores do not appear | Scores are final once recorded. See section 6 to allow a retake |

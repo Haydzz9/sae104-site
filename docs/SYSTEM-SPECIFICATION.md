@@ -87,7 +87,7 @@ Out of scope: logins with passwords, grading by the system itself, checking the 
 | J | Weeks behind (formula, section 7.6) |
 | K to AB | Lecture % for Weeks 1 to 18 |
 | AC to AT | Lab % for Weeks 1 to 18 |
-| AU to BL | Quiz score per week, as `right/total` |
+| AU to BL | Quiz score per week, as the text `right/total` (the cells are plain text; Sheets would otherwise turn 5/5 into a date) |
 | BM (hidden) | Raw summary as JSON |
 | BN | Device ID. Clear this cell to unlock the student |
 
